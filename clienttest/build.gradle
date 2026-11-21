@@ -1,0 +1,46 @@
+plugins { id 'net.fabricmc.fabric-loom' }
+
+description = '流金剑 P0 客户端验收：真实功法谱、卷轴和两式施放连拍。'
+
+repositories {
+    maven { url = 'https://maven.fabricmc.net/' }
+    // 寻路核心不参与源码组合，按清单副本的 JAR 仓取用；其位置由工作区产物键提供。
+    flatDir { dirs kizunaWorkspace.artifact('pathfinding', 'core', false).parentFile }
+}
+
+dependencies {
+    minecraft libs.minecraft
+    implementation libs.fabric.loader
+    implementation libs.fabric.api
+    localRuntime files(rootProject.project(':fabric').tasks.named('jar'))
+    compileOnly libs.owo
+    compileOnly('dev.kizuna.meridian.technique:fabric') { transitive = false }
+    compileOnly 'dev.kizuna.meridian.technique:server'
+}
+
+apply from: new File(kizunaWorkspace.directory('framework'), 'scripts/full-assembly.gradle')
+
+loom {
+    mods {
+        meridian_piglin_sword_clienttest { sourceSet sourceSets.main }
+    }
+    runs {
+        clientGametest {
+            client()
+            name '流金剑 P0 客户端验收'
+            runDir providers.gradleProperty('clienttestRunDir').getOrElse('build/clienttest')
+            vmArg '-Dfabric.client.gametest'
+            vmArg '-Dfabric.client.gametest.modid=meridian_piglin_sword_clienttest'
+            programArgs '--width', '1280', '--height', '960'
+            programArgs '--username', 'Player993'
+        }
+    }
+}
+
+tasks.named('runClientGametest') {
+    doFirst {
+        def runDirectory = file(providers.gradleProperty('clienttestRunDir').getOrElse('build/clienttest'))
+        runDirectory.mkdirs()
+        new File(runDirectory, 'options.txt').text = 'onboardAccessibility:false\nlang:zh_cn\n'
+    }
+}

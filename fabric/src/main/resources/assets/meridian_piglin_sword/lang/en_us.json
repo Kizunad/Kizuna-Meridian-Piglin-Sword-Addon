@@ -1,0 +1,10 @@
+{
+  "book.meridian_piglin_sword.molten_sword": "Molten Sword",
+  "book.meridian_piglin_sword.molten_sword.note": "Only swords can wield it. Gold is the softest, while other swords can still use the upper volume. Axes, spears and empty hands cannot cast.",
+  "volume.meridian_piglin_sword.upper": "Upper Volume · Soft Edge",
+  "item.meridian_piglin_sword.upper_scroll": "Molten Sword · Upper Volume · Soft Edge",
+  "technique.meridian_piglin_sword.wind_around": "Wind Around",
+  "technique.meridian_piglin_sword.wind_around.note": "The point slips around a shield and lands on the chosen part.",
+  "technique.meridian_piglin_sword.quiver": "Quiver",
+  "technique.meridian_piglin_sword.quiver.note": "A tremor sends three separate points into the target."
+}

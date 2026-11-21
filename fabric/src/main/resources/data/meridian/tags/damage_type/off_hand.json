@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "meridian_piglin_sword:wind_around_off_hand",
+    "meridian_piglin_sword:quiver_head_off_hand",
+    "meridian_piglin_sword:quiver_torso_off_hand",
+    "meridian_piglin_sword:quiver_legs_off_hand"
+  ]
+}

@@ -1,0 +1,69 @@
+plugins { id 'net.fabricmc.fabric-loom' }
+
+description = '独立 GameTest 装配，验证流金剑目录、卷轴学习和真实兵器效果。'
+def gametestRunDirectory = providers.gradleProperty('gametestRunDir').getOrElse('build/gametest')
+
+repositories {
+    // Threatening 以源码组合进来，完整装配按坐标装入它的 fabric 模块，连带它 include 的寻路核心；
+    // 寻路核心不参与源码组合，按文件取；位置由工作区给（平时是 Pathfinding 仓的 core/build/libs，开了 JAR 仓在仓里）。
+    flatDir { dirs kizunaWorkspace.artifact('pathfinding', 'core', false).parentFile }
+}
+
+dependencies {
+    // 26.x 不混淆：直接用官方名编译，没有映射，模组依赖也不经重映射。
+    minecraft libs.minecraft
+    implementation libs.fabric.loader
+    implementation libs.fabric.api
+    // 相邻仓库在 settings 中以源码组合；与原先读单个 JAR 一致只取各模块本身，传递库由完整装配在运行时补齐。
+    implementation('dev.kizuna.meridian.human:fabric') { transitive = false }
+    implementation project(':verification')
+    compileOnly('dev.kizuna.meridian.vanilla:fabric') { transitive = false }
+    implementation('dev.kizuna.meridian.technique:fabric') { transitive = false }
+    // 登录假玩家夹具来自功法库的 testFixtures，与功法 fabric 同经源码组合解析。
+    implementation testFixtures('dev.kizuna.meridian.technique:fabric')
+    implementation testFixtures('dev.kizuna.meridian.human:fabric')
+    // 26.2 的战斗与跃步通道是 Framework 的 ProtobufChannel，测试按通道构造载荷；运行时由完整装配提供。
+    compileOnly('dev.kizuna.meridian:fabric') { transitive = false }
+    compileOnly('dev.kizuna.meridian.combat:fabric') { transitive = false }
+    compileOnly('dev.kizuna.meridian.combat:shared') { transitive = false }
+    compileOnly('dev.kizuna.meridian.humanoid:fabric') { transitive = false }
+    compileOnly('dev.kizuna.meridian.humanoid:server') { transitive = false }
+    // 测试入口与正式数据包分开加载，验证发行包自己的清单发现。Gradle 9 的依赖块里 project() 返回依赖对象，
+    // 所以从根工程取 fabric 工程的 jar 任务。
+    localRuntime files(rootProject.project(':fabric').tasks.named('jar'))
+}
+
+loom {
+    mods {
+        meridian_piglin_sword_test { sourceSet sourceSets.main }
+    }
+    runs {
+        gametest {
+            server()
+            name '流金剑 GameTest'
+            runDir gametestRunDirectory
+            vmArg '-Dfabric-api.gametest'
+            vmArg '-Dfabric-api.gametest.report-file=build/gametest-results.xml'
+            if (providers.gradleProperty('gametestFilter').isPresent()) {
+                vmArg "-Dfabric-api.gametest.filter=${providers.gradleProperty('gametestFilter').get()}"
+            }
+        }
+    }
+}
+
+tasks.named('runGametest') {
+    doFirst {
+        // 测试世界的胸甲延伸到双前臂，供命中费用例观测守式改点后的真实单件减伤。
+        def damageDefaults = new File(kizunaWorkspace.directory('vanilla-damage'),
+                'server/src/main/resources/meridian-vanilla-damage.toml')
+        def damageConfig = file("${gametestRunDirectory}/config/meridian-vanilla-damage.toml")
+        damageConfig.parentFile.mkdirs()
+        damageConfig.setText(damageDefaults.getText('UTF-8').replaceFirst(
+                /(?m)^chest = \[/, 'chest = ["left_forearm", "right_forearm", '), 'UTF-8')
+        // 每局从空目录新建世界：GameTest 服务端按自带的平坦预设建世界，旧目录只会累积上一局的区块、实体、假玩家与模组存档。
+        // 26.2 把生成设置与游戏规则拆到了 data/minecraft，只留 level.dat 会退回随机种子的默认地形，所以整个目录删掉。
+        file("${gametestRunDirectory}/world").deleteDir()
+    }
+}
+
+apply from: new File(kizunaWorkspace.directory('framework'), 'scripts/full-assembly.gradle')

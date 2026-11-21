@@ -1,0 +1,258 @@
+# 流金剑 P0 目录；数值为上卷可执行闭环所需的首版占位。
+schema_version: 1
+namespace: "meridian_piglin_sword"
+binding_template_groups: "human:humanoid"
+
+books {
+  id: "meridian_piglin_sword:molten_sword"
+  display_name: "流金剑"
+  held_item_rules {
+    categories {
+      id: "soft_blades"
+      item_tags: "meridian_piglin_sword:soft_blades"
+      selection_priority: 0
+      base_damage_source: ITEM_ATTACK_DAMAGE
+      base_damage { value: 1 unit: RATIO }
+      injury_kind: CUTTING
+      shield_interaction: NO_SHIELD_BREAK
+      can_break_doors: false
+    }
+    categories {
+      id: "swords"
+      item_tags: "minecraft:swords"
+      selection_priority: 1
+      base_damage_source: ITEM_ATTACK_DAMAGE
+      base_damage { value: 1 unit: RATIO }
+      injury_kind: CUTTING
+      shield_interaction: NO_SHIELD_BREAK
+      can_break_doors: false
+    }
+    categories {
+      id: "other_items"
+      selection_priority: 2
+      base_damage_source: FIXED_DAMAGE
+      base_damage { value: 0 unit: DAMAGE_POINT }
+      injury_kind: BLUNT
+      shield_interaction: NO_SHIELD_BREAK
+      can_break_doors: false
+    }
+    durability {
+      item_tags: "meridian_piglin_sword:soft_blades"
+      multiplier { value: 1 unit: RATIO }
+    }
+    durability {
+      item_tags: "minecraft:swords"
+      multiplier { value: 2 unit: RATIO }
+    }
+    durability { multiplier { value: 2 unit: RATIO } }
+    selection_order: CATEGORY_PRIORITY
+    selection_order: DURABILITY_MULTIPLIER
+    selection_order: PREFER_MAIN_HAND
+  }
+}
+
+volumes {
+  id: "meridian_piglin_sword:upper"
+  book_id: "meridian_piglin_sword:molten_sword"
+  display_name: "流金剑·上卷·软刃"
+  techniques { id: "meridian_piglin_sword:wind_around" version: 1 }
+  techniques { id: "meridian_piglin_sword:quiver" version: 1 }
+}
+
+definitions {
+  id: "meridian_piglin_sword:wind_around"
+  version: 1
+  category: ATTACK
+  minimum_realm: WANDERING_QI
+  slots {
+    id: "hand_meridian"
+    module: MERIDIAN
+    tags: "human:hand_meridian"
+    minimum_count: 1
+    maximum_count: 6
+    require_opened: true
+  }
+  slots {
+    id: "arm_muscle"
+    module: TISSUE
+    tags: "human:arm_muscle"
+    minimum_count: 1
+    maximum_count: 6
+  }
+  cost {
+    qi {
+      slot_id: "hand_meridian"
+      phase: FREE
+      matching: ANY_ATTRIBUTE_AT_LEAST_PHASE
+      amount { value: 3 unit: QI }
+      distribution: EVEN
+    }
+  }
+  phases {
+    warmup_millis: 350
+    active_millis: 0
+    recovery_millis: 650
+    interruptible_by_damage: true
+  }
+  cooldown_millis: 3000
+  effects {
+    at_millis: 0
+    presentation {
+      id: "meridian_piglin_sword:wind_around"
+      duration: UNTIL_RECOVERY_END
+      start_millis: 0
+    }
+  }
+  effects {
+    at_millis: 350
+    weapon_strike {
+      shape: SINGLE_TARGET
+      distance { value: 3 unit: METER }
+      angle { value: 60 unit: DEGREE }
+      facing_offset { value: 0 unit: DEGREE }
+      multiplier { value: 1 unit: RATIO }
+      maximum_targets: 1
+      cast_target_limit: 1
+      knockback { value: 0 unit: RATIO }
+      can_two_hand: false
+      two_hand_multiplier { value: 1 unit: RATIO }
+      break_shield: false
+      injury_override: CUTTING
+      last_strike: true
+      durability_base: 1
+      shield_cooldown_millis: 0
+      shield_break_millis: 0
+      dedup_group: "wind_around"
+      main_hand_damage_type_id: "meridian_piglin_sword:wind_around_main_hand"
+      off_hand_damage_type_id: "meridian_piglin_sword:wind_around_off_hand"
+    }
+  }
+  presentation {
+    icon_id: "meridian_piglin_sword:wind_around"
+    display_name: "绕"
+    description: "剑尖不与盾面争力，顺着缝隙绕进去。"
+  }
+}
+
+definitions {
+  id: "meridian_piglin_sword:quiver"
+  version: 1
+  category: ATTACK
+  minimum_realm: WANDERING_QI
+  slots {
+    id: "hand_meridian"
+    module: MERIDIAN
+    tags: "human:hand_meridian"
+    minimum_count: 1
+    maximum_count: 6
+    require_opened: true
+  }
+  slots {
+    id: "arm_muscle"
+    module: TISSUE
+    tags: "human:arm_muscle"
+    minimum_count: 1
+    maximum_count: 6
+  }
+  cost {
+    qi {
+      slot_id: "hand_meridian"
+      phase: FREE
+      matching: ANY_ATTRIBUTE_AT_LEAST_PHASE
+      amount { value: 4 unit: QI }
+      distribution: EVEN
+    }
+  }
+  phases {
+    warmup_millis: 300
+    active_millis: 200
+    recovery_millis: 0
+    interruptible_by_damage: true
+  }
+  cooldown_millis: 5000
+  effects {
+    at_millis: 0
+    presentation {
+      id: "meridian_piglin_sword:quiver"
+      duration: UNTIL_RECOVERY_END
+      start_millis: 0
+    }
+  }
+  effects {
+    at_millis: 300
+    weapon_strike {
+      shape: SINGLE_TARGET
+      distance { value: 3 unit: METER }
+      angle { value: 60 unit: DEGREE }
+      facing_offset { value: 0 unit: DEGREE }
+      multiplier { value: 0.4 unit: RATIO }
+      maximum_targets: 1
+      cast_target_limit: 1
+      knockback { value: 0 unit: RATIO }
+      can_two_hand: false
+      two_hand_multiplier { value: 1 unit: RATIO }
+      break_shield: false
+      injury_override: CUTTING
+      last_strike: false
+      durability_base: 1
+      shield_cooldown_millis: 0
+      shield_break_millis: 0
+      dedup_group: "quiver_1"
+      main_hand_damage_type_id: "meridian_piglin_sword:quiver_head_main_hand"
+      off_hand_damage_type_id: "meridian_piglin_sword:quiver_head_off_hand"
+    }
+  }
+  effects {
+    at_millis: 400
+    weapon_strike {
+      shape: SINGLE_TARGET
+      distance { value: 3 unit: METER }
+      angle { value: 60 unit: DEGREE }
+      facing_offset { value: 0 unit: DEGREE }
+      multiplier { value: 0.4 unit: RATIO }
+      maximum_targets: 1
+      cast_target_limit: 1
+      knockback { value: 0 unit: RATIO }
+      can_two_hand: false
+      two_hand_multiplier { value: 1 unit: RATIO }
+      break_shield: false
+      injury_override: CUTTING
+      last_strike: false
+      durability_base: 1
+      shield_cooldown_millis: 0
+      shield_break_millis: 0
+      dedup_group: "quiver_2"
+      main_hand_damage_type_id: "meridian_piglin_sword:quiver_torso_main_hand"
+      off_hand_damage_type_id: "meridian_piglin_sword:quiver_torso_off_hand"
+    }
+  }
+  effects {
+    at_millis: 500
+    weapon_strike {
+      shape: SINGLE_TARGET
+      distance { value: 3 unit: METER }
+      angle { value: 60 unit: DEGREE }
+      facing_offset { value: 0 unit: DEGREE }
+      multiplier { value: 0.4 unit: RATIO }
+      maximum_targets: 1
+      cast_target_limit: 1
+      knockback { value: 0 unit: RATIO }
+      can_two_hand: false
+      two_hand_multiplier { value: 1 unit: RATIO }
+      break_shield: false
+      injury_override: CUTTING
+      last_strike: true
+      durability_base: 1
+      shield_cooldown_millis: 0
+      shield_break_millis: 0
+      dedup_group: "quiver_3"
+      main_hand_damage_type_id: "meridian_piglin_sword:quiver_legs_main_hand"
+      off_hand_damage_type_id: "meridian_piglin_sword:quiver_legs_off_hand"
+    }
+  }
+  presentation {
+    icon_id: "meridian_piglin_sword:quiver"
+    display_name: "抖"
+    description: "腕骨轻颤，剑尖连点三处，不给厚甲留整块的受力面。"
+  }
+}

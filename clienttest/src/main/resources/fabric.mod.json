@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "meridian_piglin_sword_clienttest",
+  "version": "1.0.0",
+  "name": "流金剑 P0 客户端验收",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": ["dev.kizuna.meridian.piglinsword.clienttest.PiglinSwordClientTest"]
+  },
+  "depends": {
+    "fabric-api": "*",
+    "meridian_technique": "*",
+    "meridian_ui": "*",
+    "meridian_human_host": "*",
+    "meridian_piglin_sword": "*"
+  }
+}
