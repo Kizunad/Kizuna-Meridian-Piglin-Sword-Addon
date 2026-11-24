@@ -8,6 +8,8 @@
     "meridian_piglin_sword:quiver_torso_main_hand",
     "meridian_piglin_sword:quiver_torso_off_hand",
     "meridian_piglin_sword:quiver_legs_main_hand",
-    "meridian_piglin_sword:quiver_legs_off_hand"
+    "meridian_piglin_sword:quiver_legs_off_hand",
+    "meridian_piglin_sword:spring_back_main_hand",
+    "meridian_piglin_sword:spring_back_off_hand"
   ]
 }

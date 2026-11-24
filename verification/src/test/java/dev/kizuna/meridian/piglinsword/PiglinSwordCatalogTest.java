@@ -23,6 +23,7 @@ public final class PiglinSwordCatalogTest {
     private static final String VOLUME_ID = NAMESPACE + ":upper";
     private static final String WIND_ID = NAMESPACE + ":wind_around";
     private static final String QUIVER_ID = NAMESPACE + ":quiver";
+    private static final String SPRING_BACK_ID = NAMESPACE + ":spring_back";
     private static final double EPSILON = 0.000001D;
 
     @Test
@@ -43,12 +44,12 @@ public final class PiglinSwordCatalogTest {
     }
 
     @Test
-    public void catalogHasOneBookOneUpperVolumeAndTwoTechniques() throws Exception {
-        // 上卷只暴露流金剑本轮交付的两式和三档书级持物规则。
+    public void catalogHasOneBookOneUpperVolumeAndThreeTechniques() throws Exception {
+        // 上卷暴露流金剑三式和三档书级持物规则。
         TechniqueCatalog catalog = catalog();
         assertEquals(1, catalog.getBooksCount());
         assertEquals(1, catalog.getVolumesCount());
-        assertEquals(2, catalog.getDefinitionsCount());
+        assertEquals(3, catalog.getDefinitionsCount());
         var book = catalog.getBooks(0);
         assertEquals(BOOK_ID, book.getId());
         assertEquals(3, book.getHeldItemRules().getCategoriesCount());
@@ -56,7 +57,7 @@ public final class PiglinSwordCatalogTest {
         assertEquals(List.of("soft_blades", "swords", "other_items"), book.getHeldItemRules()
                 .getCategoriesList().stream().map(category -> category.getId()).toList());
         assertEquals(VOLUME_ID, catalog.getVolumes(0).getId());
-        assertEquals(List.of(WIND_ID, QUIVER_ID), catalog.getVolumes(0).getTechniquesList().stream()
+        assertEquals(List.of(WIND_ID, QUIVER_ID, SPRING_BACK_ID), catalog.getVolumes(0).getTechniquesList().stream()
                 .map(reference -> reference.getId()).toList());
     }
 
@@ -64,6 +65,7 @@ public final class PiglinSwordCatalogTest {
     public void windAroundIsAOneTargetShieldBypassingFinalStrike() throws Exception {
         // 绕是一记单体收尾击，显式绑定主副手绕盾伤害类型。
         TechniqueDefinition definition = definition(catalog(), WIND_ID);
+        assertEquals(NAMESPACE + ":piglin_sword_wind_around", presentationId(definition));
         assertEquals(350, definition.getPhases().getWarmupMillis());
         assertEquals(3000, definition.getCooldownMillis());
         var strike = weaponStrikes(definition).get(0);
@@ -83,6 +85,8 @@ public final class PiglinSwordCatalogTest {
         TechniqueDefinition definition = definition(catalog(), QUIVER_ID);
         assertEquals(300, definition.getPhases().getWarmupMillis());
         assertEquals(200, definition.getPhases().getActiveMillis());
+        assertEquals(350, definition.getPhases().getRecoveryMillis());
+        assertEquals(NAMESPACE + ":piglin_sword_quiver", presentationId(definition));
         assertEquals(5000, definition.getCooldownMillis());
         var effects = weaponStrikes(definition);
         assertEquals(List.of(300L, 400L, 500L), definition.getEffectsList().stream()
@@ -116,6 +120,27 @@ public final class PiglinSwordCatalogTest {
         }
     }
 
+    @Test
+    public void springBackIsAForwardSingleTargetFollowUp() throws Exception {
+        // 弹只承接已记录的阻挡事实，沿施放者正面完成一次末击。
+        TechniqueDefinition definition = definition(catalog(), SPRING_BACK_ID);
+        assertEquals(NAMESPACE + ":piglin_sword_spring_back", presentationId(definition));
+        assertTrue(definition.getFollowUp().getOnlyFollowUp());
+        assertEquals(List.of(WIND_ID, QUIVER_ID, ""), definition.getFollowUp().getTransitionsList().stream()
+                .map(transition -> transition.getPrevious().getId()).toList());
+        assertTrue(definition.getFollowUp().getTransitionsList().stream()
+                .allMatch(transition -> transition.getBlockedAttackSourcesCount() == 3));
+        var strike = weaponStrikes(definition).get(0);
+        assertEquals(1.6D, strike.getMultiplier().getValue(), EPSILON);
+        assertEquals(0.0D, strike.getFacingOffset().getValue(), EPSILON);
+        assertEquals(StrikeShape.SINGLE_TARGET, strike.getShape());
+        assertTrue(strike.getLastStrike());
+        assertEquals(1, strike.getDurabilityBase());
+        assertEquals(NAMESPACE + ":spring_back_main_hand", strike.getMainHandDamageTypeId());
+        assertEquals(NAMESPACE + ":spring_back_off_hand", strike.getOffHandDamageTypeId());
+        assertEquals(0, presentationAtMillis(definition));
+    }
+
     private static TechniqueCatalog catalog() throws IOException {
         // 单元验证与正式发现共用功法库的有界文本解析器。
         try (var stream = PiglinSwordCatalogTest.class.getResourceAsStream("/" + CATALOG_ENTRY)) {
@@ -143,5 +168,21 @@ public final class PiglinSwordCatalogTest {
                 .filter(TechniqueEffect::hasWeaponStrike)
                 .map(TechniqueEffect::getWeaponStrike)
                 .toList();
+    }
+
+    private static String presentationId(TechniqueDefinition definition) {
+        return definition.getEffectsList().stream()
+                .filter(TechniqueEffect::hasPresentation)
+                .map(effect -> effect.getPresentation().getId())
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private static long presentationAtMillis(TechniqueDefinition definition) {
+        return definition.getEffectsList().stream()
+                .filter(TechniqueEffect::hasPresentation)
+                .mapToLong(TechniqueEffect::getAtMillis)
+                .findFirst()
+                .orElseThrow();
     }
 }

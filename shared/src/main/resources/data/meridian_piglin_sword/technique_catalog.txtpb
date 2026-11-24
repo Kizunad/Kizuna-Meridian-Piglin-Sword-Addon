@@ -57,6 +57,7 @@ volumes {
   display_name: "流金剑·上卷·软刃"
   techniques { id: "meridian_piglin_sword:wind_around" version: 1 }
   techniques { id: "meridian_piglin_sword:quiver" version: 1 }
+  techniques { id: "meridian_piglin_sword:spring_back" version: 1 }
 }
 
 definitions {
@@ -98,7 +99,7 @@ definitions {
   effects {
     at_millis: 0
     presentation {
-      id: "meridian_piglin_sword:wind_around"
+      id: "meridian_piglin_sword:piglin_sword_wind_around"
       duration: UNTIL_RECOVERY_END
       start_millis: 0
     }
@@ -166,14 +167,14 @@ definitions {
   phases {
     warmup_millis: 300
     active_millis: 200
-    recovery_millis: 0
+    recovery_millis: 350
     interruptible_by_damage: true
   }
   cooldown_millis: 5000
   effects {
     at_millis: 0
     presentation {
-      id: "meridian_piglin_sword:quiver"
+      id: "meridian_piglin_sword:piglin_sword_quiver"
       duration: UNTIL_RECOVERY_END
       start_millis: 0
     }
@@ -254,5 +255,110 @@ definitions {
     icon_id: "meridian_piglin_sword:quiver"
     display_name: "抖"
     description: "腕骨轻颤，剑尖连点三处，不给厚甲留整块的受力面。"
+  }
+}
+
+definitions {
+  id: "meridian_piglin_sword:spring_back"
+  version: 1
+  category: ATTACK
+  minimum_realm: WANDERING_QI
+  slots {
+    id: "hand_meridian"
+    module: MERIDIAN
+    tags: "human:hand_meridian"
+    minimum_count: 1
+    maximum_count: 6
+    require_opened: true
+  }
+  slots {
+    id: "arm_muscle"
+    module: TISSUE
+    tags: "human:arm_muscle"
+    minimum_count: 1
+    maximum_count: 6
+  }
+  cost {
+    qi {
+      slot_id: "hand_meridian"
+      phase: FREE
+      matching: ANY_ATTRIBUTE_AT_LEAST_PHASE
+      amount { value: 4 unit: QI }
+      distribution: EVEN
+    }
+  }
+  phases {
+    warmup_millis: 250
+    active_millis: 0
+    recovery_millis: 350
+    interruptible_by_damage: true
+  }
+  cooldown_millis: 6000
+  follow_up {
+    only_follow_up: true
+    transitions {
+      previous { id: "meridian_piglin_sword:wind_around" version: 1 }
+      recovery_start_ratio { value: 0.5 unit: RATIO }
+      after_recovery_millis: 600
+      start_millis: 0
+      blocked_attack_sources: SHIELD
+      blocked_attack_sources: GUARD
+      blocked_attack_sources: HARD_OBJECT
+    }
+    transitions {
+      previous { id: "meridian_piglin_sword:quiver" version: 1 }
+      recovery_start_ratio { value: 0.5 unit: RATIO }
+      after_recovery_millis: 600
+      start_millis: 0
+      blocked_attack_sources: SHIELD
+      blocked_attack_sources: GUARD
+      blocked_attack_sources: HARD_OBJECT
+    }
+    transitions {
+      previous {}
+      recovery_start_ratio { value: 0.5 unit: RATIO }
+      after_recovery_millis: 600
+      start_millis: 0
+      blocked_attack_sources: SHIELD
+      blocked_attack_sources: GUARD
+      blocked_attack_sources: HARD_OBJECT
+    }
+  }
+  effects {
+    at_millis: 0
+    presentation {
+      id: "meridian_piglin_sword:piglin_sword_spring_back"
+      duration: UNTIL_RECOVERY_END
+      start_millis: 0
+    }
+  }
+  effects {
+    at_millis: 250
+    weapon_strike {
+      shape: SINGLE_TARGET
+      distance { value: 3 unit: METER }
+      angle { value: 60 unit: DEGREE }
+      facing_offset { value: 0 unit: DEGREE }
+      multiplier { value: 1.6 unit: RATIO }
+      maximum_targets: 1
+      cast_target_limit: 1
+      knockback { value: 0 unit: RATIO }
+      can_two_hand: false
+      two_hand_multiplier { value: 1 unit: RATIO }
+      break_shield: false
+      injury_override: CUTTING
+      last_strike: true
+      durability_base: 1
+      shield_cooldown_millis: 0
+      shield_break_millis: 0
+      dedup_group: "spring_back"
+      main_hand_damage_type_id: "meridian_piglin_sword:spring_back_main_hand"
+      off_hand_damage_type_id: "meridian_piglin_sword:spring_back_off_hand"
+    }
+  }
+  presentation {
+    icon_id: "meridian_piglin_sword:spring_back"
+    display_name: "弹"
+    description: "借着挡住剑锋的硬劲回抽，剑刃从另一侧弹回前方。"
   }
 }

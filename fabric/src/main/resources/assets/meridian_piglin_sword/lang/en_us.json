@@ -6,5 +6,7 @@
   "technique.meridian_piglin_sword.wind_around": "Wind Around",
   "technique.meridian_piglin_sword.wind_around.note": "The point slips around a shield and lands on the chosen part.",
   "technique.meridian_piglin_sword.quiver": "Quiver",
-  "technique.meridian_piglin_sword.quiver.note": "A tremor sends three separate points into the target."
+  "technique.meridian_piglin_sword.quiver.note": "A tremor sends three separate points into the target.",
+  "technique.meridian_piglin_sword.spring_back": "Spring Back",
+  "technique.meridian_piglin_sword.spring_back.note": "The blade rebounds from a blocked edge and strikes forward from the other side."
 }

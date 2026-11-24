@@ -6,5 +6,7 @@
   "technique.meridian_piglin_sword.wind_around": "绕",
   "technique.meridian_piglin_sword.wind_around.note": "剑尖顺着盾边绕入，一刺落在原定部位。",
   "technique.meridian_piglin_sword.quiver": "抖",
-  "technique.meridian_piglin_sword.quiver.note": "腕骨一颤，剑尖连点三下，每一下都是独立的一击。"
+  "technique.meridian_piglin_sword.quiver.note": "腕骨一颤，剑尖连点三下，每一下都是独立的一击。",
+  "technique.meridian_piglin_sword.spring_back": "弹",
+  "technique.meridian_piglin_sword.spring_back.note": "借着挡住剑锋的硬劲回抽，剑刃从另一侧弹回前方。"
 }

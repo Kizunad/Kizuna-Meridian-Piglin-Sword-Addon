@@ -128,7 +128,7 @@ def main() -> None:
     resource_dir = root / "fabric/src/main/resources/assets/meridian_piglin_sword/textures"
     output_background(args.raw_dir, resource_dir)
     output_scroll(args.raw_dir, resource_dir)
-    for name in ("wind_around", "quiver"):
+    for name in ("wind_around", "quiver", "spring_back"):
         output_technique(args.raw_dir, resource_dir, name)
 
 

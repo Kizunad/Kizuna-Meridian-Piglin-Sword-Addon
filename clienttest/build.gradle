@@ -1,6 +1,6 @@
 plugins { id 'net.fabricmc.fabric-loom' }
 
-description = '流金剑 P0 客户端验收：真实功法谱、卷轴和两式施放连拍。'
+description = '流金剑客户端验收：P0 截图和 P2 弹式录像。'
 
 repositories {
     maven { url = 'https://maven.fabricmc.net/' }
@@ -16,6 +16,7 @@ dependencies {
     compileOnly libs.owo
     compileOnly('dev.kizuna.meridian.technique:fabric') { transitive = false }
     compileOnly 'dev.kizuna.meridian.technique:server'
+    compileOnly('dev.kizuna.meridian.vanilla:fabric') { transitive = false }
 }
 
 apply from: new File(kizunaWorkspace.directory('framework'), 'scripts/full-assembly.gradle')
@@ -31,6 +32,7 @@ loom {
             runDir providers.gradleProperty('clienttestRunDir').getOrElse('build/clienttest')
             vmArg '-Dfabric.client.gametest'
             vmArg '-Dfabric.client.gametest.modid=meridian_piglin_sword_clienttest'
+            vmArg "-Dmeridian.piglin.sword.clientTestClip=${providers.gradleProperty('clienttestClip').getOrElse('p0')}"
             programArgs '--width', '1280', '--height', '960'
             programArgs '--username', 'Player993'
         }
