@@ -3,7 +3,7 @@
   "id": "meridian_piglin_sword",
   "version": "${version}",
   "name": "流金剑",
-  "description": "流金剑上卷两式的功法目录、卷轴与客户端资源",
+  "description": "流金剑上下卷的功法目录、卷轴、热兵效果与客户端资源",
   "authors": ["Kizunad"],
   "license": "PolyForm-Noncommercial-1.0.0",
   "environment": "*",

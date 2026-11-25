@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:swords",
+    "#meridian_piglin_sword:soft_blades"
+  ]
+}

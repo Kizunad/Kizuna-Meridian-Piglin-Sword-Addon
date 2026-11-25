@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "meridian_piglin_sword:coil_main_hand",
+    "meridian_piglin_sword:coil_off_hand",
+    "meridian_piglin_sword:heated_coil_main_hand",
+    "meridian_piglin_sword:heated_coil_off_hand"
+  ]
+}

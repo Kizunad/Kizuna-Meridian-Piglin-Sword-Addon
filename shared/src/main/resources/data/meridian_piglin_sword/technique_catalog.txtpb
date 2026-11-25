@@ -1,4 +1,4 @@
-# 流金剑 P0 目录；数值为上卷可执行闭环所需的首版占位。
+# 流金剑卷目。
 schema_version: 1
 namespace: "meridian_piglin_sword"
 binding_template_groups: "human:humanoid"
@@ -7,6 +7,8 @@ books {
   id: "meridian_piglin_sword:molten_sword"
   display_name: "流金剑"
   held_item_rules {
+    required_item_tags: "meridian_piglin_sword:swords"
+    refusals { reason: "流金剑需要剑" translation_key: "technique.meridian_piglin_sword.sword_required" }
     categories {
       id: "soft_blades"
       item_tags: "meridian_piglin_sword:soft_blades"
@@ -19,7 +21,7 @@ books {
     }
     categories {
       id: "swords"
-      item_tags: "minecraft:swords"
+      item_tags: "meridian_piglin_sword:swords"
       selection_priority: 1
       base_damage_source: ITEM_ATTACK_DAMAGE
       base_damage { value: 1 unit: RATIO }
@@ -41,7 +43,7 @@ books {
       multiplier { value: 1 unit: RATIO }
     }
     durability {
-      item_tags: "minecraft:swords"
+      item_tags: "meridian_piglin_sword:swords"
       multiplier { value: 2 unit: RATIO }
     }
     durability { multiplier { value: 2 unit: RATIO } }
@@ -58,6 +60,15 @@ volumes {
   techniques { id: "meridian_piglin_sword:wind_around" version: 1 }
   techniques { id: "meridian_piglin_sword:quiver" version: 1 }
   techniques { id: "meridian_piglin_sword:spring_back" version: 1 }
+}
+
+volumes {
+  id: "meridian_piglin_sword:lower"
+  book_id: "meridian_piglin_sword:molten_sword"
+  display_name: "流金剑·下卷·流金"
+  prerequisite_volume_ids: "meridian_piglin_sword:upper"
+  techniques { id: "meridian_piglin_sword:coil" version: 1 }
+  techniques { id: "meridian_piglin_sword:molten_flow" version: 1 }
 }
 
 definitions {
@@ -126,6 +137,10 @@ definitions {
       dedup_group: "wind_around"
       main_hand_damage_type_id: "meridian_piglin_sword:wind_around_main_hand"
       off_hand_damage_type_id: "meridian_piglin_sword:wind_around_off_hand"
+      damage_type_item_tag: "meridian_piglin_sword:soft_blades"
+      heat_status_id: "meridian_piglin_sword:molten"
+      heated_main_hand_damage_type_id: "meridian_piglin_sword:wind_around_main_hand"
+      heated_off_hand_damage_type_id: "meridian_piglin_sword:wind_around_off_hand"
     }
   }
   presentation {
@@ -201,6 +216,9 @@ definitions {
       dedup_group: "quiver_1"
       main_hand_damage_type_id: "meridian_piglin_sword:quiver_head_main_hand"
       off_hand_damage_type_id: "meridian_piglin_sword:quiver_head_off_hand"
+      heat_status_id: "meridian_piglin_sword:molten"
+      heated_main_hand_damage_type_id: "meridian_piglin_sword:heated_quiver_head_main_hand"
+      heated_off_hand_damage_type_id: "meridian_piglin_sword:heated_quiver_head_off_hand"
     }
   }
   effects {
@@ -225,6 +243,9 @@ definitions {
       dedup_group: "quiver_2"
       main_hand_damage_type_id: "meridian_piglin_sword:quiver_torso_main_hand"
       off_hand_damage_type_id: "meridian_piglin_sword:quiver_torso_off_hand"
+      heat_status_id: "meridian_piglin_sword:molten"
+      heated_main_hand_damage_type_id: "meridian_piglin_sword:heated_quiver_torso_main_hand"
+      heated_off_hand_damage_type_id: "meridian_piglin_sword:heated_quiver_torso_off_hand"
     }
   }
   effects {
@@ -249,6 +270,9 @@ definitions {
       dedup_group: "quiver_3"
       main_hand_damage_type_id: "meridian_piglin_sword:quiver_legs_main_hand"
       off_hand_damage_type_id: "meridian_piglin_sword:quiver_legs_off_hand"
+      heat_status_id: "meridian_piglin_sword:molten"
+      heated_main_hand_damage_type_id: "meridian_piglin_sword:heated_quiver_legs_main_hand"
+      heated_off_hand_damage_type_id: "meridian_piglin_sword:heated_quiver_legs_off_hand"
     }
   }
   presentation {
@@ -354,11 +378,197 @@ definitions {
       dedup_group: "spring_back"
       main_hand_damage_type_id: "meridian_piglin_sword:spring_back_main_hand"
       off_hand_damage_type_id: "meridian_piglin_sword:spring_back_off_hand"
+      heat_status_id: "meridian_piglin_sword:molten"
+      heated_main_hand_damage_type_id: "meridian_piglin_sword:heated_spring_back_main_hand"
+      heated_off_hand_damage_type_id: "meridian_piglin_sword:heated_spring_back_off_hand"
     }
   }
   presentation {
     icon_id: "meridian_piglin_sword:spring_back"
     display_name: "弹"
     description: "借着挡住剑锋的硬劲回抽，剑刃从另一侧弹回前方。"
+  }
+}
+
+definitions {
+  id: "meridian_piglin_sword:coil"
+  version: 1
+  category: ATTACK
+  minimum_realm: TRUE_QI
+  held_item_rules {
+    required_item_tags: "meridian_piglin_sword:soft_blades"
+    refusals {
+      item_tag: "meridian_piglin_sword:swords" reason: "这把剑太硬"
+      translation_key: "technique.meridian_piglin_sword.blade_too_hard"
+    }
+    refusals { reason: "流金剑需要剑" translation_key: "technique.meridian_piglin_sword.sword_required" }
+    categories {
+      id: "soft_blades" selection_priority: 0 base_damage_source: ITEM_ATTACK_DAMAGE
+      base_damage { value: 1 unit: RATIO }
+      injury_kind: CUTTING shield_interaction: NO_SHIELD_BREAK can_break_doors: false
+    }
+    durability { multiplier { value: 1 unit: RATIO } }
+    selection_order: CATEGORY_PRIORITY
+    selection_order: DURABILITY_MULTIPLIER
+    selection_order: PREFER_MAIN_HAND
+  }
+  slots {
+    id: "hand_meridian"
+    module: MERIDIAN
+    tags: "human:hand_meridian"
+    minimum_count: 2
+    maximum_count: 6
+    require_opened: true
+  }
+  slots {
+    id: "foot_meridian" module: MERIDIAN tags: "human:foot_meridian"
+    minimum_count: 1 maximum_count: 6 require_opened: true
+  }
+  slots {
+    id: "arm_muscle"
+    module: TISSUE
+    tags: "human:arm_muscle"
+    minimum_count: 1
+    maximum_count: 6
+  }
+  cost {
+    qi {
+      slot_id: "hand_meridian"
+      phase: GAS
+      matching: ANY_ATTRIBUTE_AT_LEAST_PHASE
+      amount { value: 4 unit: QI }
+      distribution: EVEN
+    }
+  }
+  phases {
+    warmup_millis: 500
+    active_millis: 2500
+    recovery_millis: 350
+    interruptible_by_damage: true
+  }
+  cooldown_millis: 18000
+  effects {
+    at_millis: 0
+    presentation {
+      id: "meridian_piglin_sword:piglin_sword_coil"
+      duration: UNTIL_RECOVERY_END
+      start_millis: 0
+    }
+  }
+  effects {
+    at_millis: 3000
+    weapon_strike {
+      shape: SINGLE_TARGET
+      distance { value: 3 unit: METER }
+      angle { value: 60 unit: DEGREE }
+      facing_offset { value: 0 unit: DEGREE }
+      multiplier { value: 1.2 unit: RATIO }
+      maximum_targets: 1
+      cast_target_limit: 1
+      knockback { value: 0 unit: RATIO }
+      can_two_hand: false
+      two_hand_multiplier { value: 1 unit: RATIO }
+      break_shield: false
+      injury_override: CUTTING
+      last_strike: true
+      durability_base: 1
+      shield_cooldown_millis: 0
+      shield_break_millis: 0
+      dedup_group: "coil"
+      main_hand_damage_type_id: "meridian_piglin_sword:coil_main_hand"
+      off_hand_damage_type_id: "meridian_piglin_sword:coil_off_hand"
+      heat_status_id: "meridian_piglin_sword:molten"
+      heated_main_hand_damage_type_id: "meridian_piglin_sword:heated_coil_main_hand"
+      heated_off_hand_damage_type_id: "meridian_piglin_sword:heated_coil_off_hand"
+    }
+  }
+  presentation {
+    icon_id: "meridian_piglin_sword:coil"
+    display_name: "缠"
+    description: "剑身盘上持兵的前臂，抽剑时刃口贴着手臂拉过。"
+  }
+}
+
+definitions {
+  id: "meridian_piglin_sword:molten_flow"
+  version: 1
+  category: BUFF
+  minimum_realm: TRUE_QI
+  held_item_rules {
+    required_item_tags: "meridian_piglin_sword:soft_blades"
+    refusals {
+      item_tag: "meridian_piglin_sword:swords" reason: "这把剑太硬"
+      translation_key: "technique.meridian_piglin_sword.blade_too_hard"
+    }
+    refusals { reason: "流金剑需要剑" translation_key: "technique.meridian_piglin_sword.sword_required" }
+    categories {
+      id: "soft_blades" selection_priority: 0 base_damage_source: ITEM_ATTACK_DAMAGE
+      base_damage { value: 1 unit: RATIO }
+      injury_kind: CUTTING shield_interaction: NO_SHIELD_BREAK can_break_doors: false
+    }
+    durability { multiplier { value: 1 unit: RATIO } }
+    selection_order: CATEGORY_PRIORITY
+    selection_order: DURABILITY_MULTIPLIER
+    selection_order: PREFER_MAIN_HAND
+  }
+  slots {
+    id: "hand_meridian"
+    module: MERIDIAN
+    tags: "human:hand_meridian"
+    minimum_count: 2
+    maximum_count: 6
+    require_opened: true
+  }
+  slots {
+    id: "foot_meridian" module: MERIDIAN tags: "human:foot_meridian"
+    minimum_count: 1 maximum_count: 6 require_opened: true
+  }
+  slots {
+    id: "arm_muscle"
+    module: TISSUE
+    tags: "human:arm_muscle"
+    minimum_count: 1
+    maximum_count: 6
+  }
+  cost {
+    qi {
+      slot_id: "hand_meridian"
+      phase: GAS
+      matching: ANY_ATTRIBUTE_AT_LEAST_PHASE
+      amount { value: 4 unit: QI }
+      distribution: EVEN
+    }
+  }
+  phases {
+    warmup_millis: 800
+    active_millis: 0
+    recovery_millis: 350
+    interruptible_by_damage: true
+  }
+  cooldown_millis: 40000
+  effects {
+    at_millis: 0
+    presentation {
+      id: "meridian_piglin_sword:piglin_sword_molten"
+      duration: UNTIL_RECOVERY_END
+      start_millis: 0
+    }
+  }
+  effects {
+    at_millis: 800
+    status_benefit {
+      id: "meridian_piglin_sword:molten" duration_millis: 10000 color_rgb: 16753920
+      weapon_heat {
+        soft_item_tag: "meridian_piglin_sword:soft_blades"
+        quenched { id: "meridian_piglin_sword:quenched" duration_millis: 30000 color_rgb: 7833775 plain {} }
+        fire_damage_type: "meridian_piglin_sword:blade_burn"
+        hand_damage_hp: 0.5 hit_damage_ratio: 0.3 extra_durability: 1
+      }
+    }
+  }
+  presentation {
+    icon_id: "meridian_piglin_sword:molten_flow"
+    display_name: "流金"
+    description: "运气暖透金刃，垂下的剑尖能兜过盾沿。"
   }
 }

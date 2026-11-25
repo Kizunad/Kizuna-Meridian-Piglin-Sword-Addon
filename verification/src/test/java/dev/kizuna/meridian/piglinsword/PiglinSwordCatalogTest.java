@@ -44,12 +44,16 @@ public final class PiglinSwordCatalogTest {
     }
 
     @Test
-    public void catalogHasOneBookOneUpperVolumeAndThreeTechniques() throws Exception {
+    public void catalogListsBothVolumesInLearningOrder() throws Exception {
         // 上卷暴露流金剑三式和三档书级持物规则。
         TechniqueCatalog catalog = catalog();
         assertEquals(1, catalog.getBooksCount());
-        assertEquals(1, catalog.getVolumesCount());
-        assertEquals(3, catalog.getDefinitionsCount());
+        assertEquals(2, catalog.getVolumesCount());
+        assertEquals(5, catalog.getDefinitionsCount());
+        var lower = catalog.getVolumes(1);
+        assertEquals(List.of(VOLUME_ID), lower.getPrerequisiteVolumeIdsList());
+        assertEquals(List.of(NAMESPACE + ":coil", NAMESPACE + ":molten_flow"), lower.getTechniquesList().stream()
+                .map(reference -> reference.getId()).toList());
         var book = catalog.getBooks(0);
         assertEquals(BOOK_ID, book.getId());
         assertEquals(3, book.getHeldItemRules().getCategoriesCount());

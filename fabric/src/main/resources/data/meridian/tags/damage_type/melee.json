@@ -10,6 +10,18 @@
     "meridian_piglin_sword:quiver_legs_main_hand",
     "meridian_piglin_sword:quiver_legs_off_hand",
     "meridian_piglin_sword:spring_back_main_hand",
-    "meridian_piglin_sword:spring_back_off_hand"
+    "meridian_piglin_sword:spring_back_off_hand",
+    "meridian_piglin_sword:coil_main_hand",
+    "meridian_piglin_sword:coil_off_hand",
+    "meridian_piglin_sword:heated_coil_main_hand",
+    "meridian_piglin_sword:heated_coil_off_hand",
+    "meridian_piglin_sword:heated_spring_back_main_hand",
+    "meridian_piglin_sword:heated_spring_back_off_hand",
+    "meridian_piglin_sword:heated_quiver_head_main_hand",
+    "meridian_piglin_sword:heated_quiver_head_off_hand",
+    "meridian_piglin_sword:heated_quiver_torso_main_hand",
+    "meridian_piglin_sword:heated_quiver_torso_off_hand",
+    "meridian_piglin_sword:heated_quiver_legs_main_hand",
+    "meridian_piglin_sword:heated_quiver_legs_off_hand"
   ]
 }

@@ -8,5 +8,19 @@
   "technique.meridian_piglin_sword.quiver": "抖",
   "technique.meridian_piglin_sword.quiver.note": "腕骨一颤，剑尖连点三下，每一下都是独立的一击。",
   "technique.meridian_piglin_sword.spring_back": "弹",
-  "technique.meridian_piglin_sword.spring_back.note": "借着挡住剑锋的硬劲回抽，剑刃从另一侧弹回前方。"
+  "technique.meridian_piglin_sword.spring_back.note": "借着挡住剑锋的硬劲回抽，剑刃从另一侧弹回前方。",
+  "volume.meridian_piglin_sword.lower": "下卷·流金",
+  "volume.meridian_piglin_sword.lower.note": "金刃能弯，冷透了便使不得卷中的招。",
+  "codex.power.meridian_piglin_sword.lower": "金刃暖透，贴着盾沿弯进去，抽回来时连握剑的手心也烫。",
+  "item.meridian_piglin_sword.lower_scroll": "流金剑·下卷·流金",
+  "technique.meridian_piglin_sword.coil": "缠",
+  "technique.meridian_piglin_sword.coil.note": "剑身盘上对手持兵的前臂，抽剑时刃口贴着手臂拉过。",
+  "technique.meridian_piglin_sword.molten_flow": "流金",
+  "technique.meridian_piglin_sword.molten_flow.note": "运气暖透剑身。垂下去的剑尖能兜过盾沿，握柄的手也会被烫伤。",
+  "effect.meridian_piglin_sword.molten": "流金",
+  "effect.meridian_piglin_sword.molten.note": "金刃烧软，贴着盾沿也能转过去。热意从柄上传来，掌皮渐渐发痛。",
+  "effect.meridian_piglin_sword.quenched": "淬硬",
+  "effect.meridian_piglin_sword.quenched.note": "金刃冷透了。再抖动手腕，剑尖也弯不过盾沿。",
+  "technique.meridian_piglin_sword.sword_required": "流金剑需要剑",
+  "technique.meridian_piglin_sword.blade_too_hard": "这把剑太硬"
 }

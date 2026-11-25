@@ -11,6 +11,7 @@ import dev.kizuna.meridian.technique.protocol.pb.TechniqueMessages.TechniqueRefe
 import dev.kizuna.meridian.technique.server.TechniqueService.BlockedAttackObservation;
 import dev.kizuna.meridian.technique.server.TechniqueState;
 import dev.kizuna.meridian.vanilla.fabric.BlockedAttackBridge;
+import io.wispforest.owo.ui.component.LabelComponent;
 import io.wispforest.owo.ui.container.ScrollContainer;
 import io.wispforest.owo.ui.core.ParentUIComponent;
 import io.wispforest.owo.ui.core.UIComponent;
@@ -29,6 +30,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import dev.kizuna.meridian.technique.fabric.world.TechniqueStatusBenefits;
 import net.minecraft.client.Screenshot;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.client.tutorial.TutorialSteps;
@@ -67,18 +70,18 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
     private static final String UPPER_SCROLL = PREFIX + "upper_scroll";
     private static final String CODEX = "meridian_technique:technique_codex";
     private static final String MOLTEN_SWORD = PREFIX + "molten_sword";
-    private static final int P2_PRE_FRAMES = 5;
+    private static final int P2_PRE_FRAMES = 40;
     private static final int P2_POST_CAST_FRAMES = 20;
     private static final int P2_BLOCK_VISIBILITY_TICKS = 2;
     private static final int P2_SPRING_BACK_COOLDOWN_TICKS = 120;
     private static final int P2_WALL_X_OFFSET = 1;
-    private static final double P2_CASTER_X = 0.0D;
+    private static final double CAMERA_CENTER_X = 1.25D;
     private static final double P2_PLAYER_X = 0.0D;
     private static final double P2_PLAYER_Z = 0.0D;
     private static final double P2_DEFENDER_X = 2.5D;
     private static final double P2_TARGET_X = 4.0D;
-    private static final double P2_CAMERA_Z = -5.0D;
-    private static final double P2_CAMERA_Y = 2.8D;
+    private static final double P2_CAMERA_Z = -3.8D;
+    private static final double P2_CAMERA_Y = -0.6D;
     private static final double P2_ENTITY_AREA_RADIUS_X = 8.0D;
     private static final double P2_ENTITY_AREA_BELOW = 2.0D;
     private static final double P2_ENTITY_AREA_ABOVE = 5.0D;
@@ -88,7 +91,7 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
     private static final float P2_TARGET_YAW = 90.0F;
     private static final float P2_LEVEL_PITCH = 0.0F;
     private static final float P2_CAMERA_YAW = 0.0F;
-    private static final float P2_CAMERA_PITCH = 8.0F;
+    private static final float P2_CAMERA_PITCH = 3.0F;
     private static final long P2_BLOCKED_EVENT_AGE_MILLIS = 650L;
     private static final Path P2_SCREENSHOT_DIRECTORY = Path.of("screenshots");
     private static final String SPRING_BACK = PREFIX + "spring_back";
@@ -97,17 +100,105 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         context.getInput().resizeWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
+            if ("p3".equals(CLIENT_TEST_CLIP)) {
+                runP3(context, world);
+                return;
+            }
             if ("p2".equals(CLIENT_TEST_CLIP)) {
                 runP2(context, world);
                 return;
             }
             UUID playerId = prepare(context, world);
             captureScroll(context, world);
-            captureCodex(context, world);
+            captureCodex(context, "wind_around", "codex_molten_sword");
             Vindicator target = spawnTarget(world, playerId);
             captureWind(context, world, playerId, target);
             captureQuiver(context, world, playerId, target);
         }
+    }
+
+    private static final int FLOW_START_FRAMES = 26;
+    private static final int QUIVER_FRAMES = 22;
+    private static final int FLOW_COOLDOWN_TICKS = 800;
+
+    private static void runP3(ClientGameTestContext context, TestSingleplayerContext world) {
+        // 独立测试存档里学下卷，用真实玩家施放，侧面固定机位拍两式与换物。
+        UUID playerId = prepare(context, world);
+        world.getServer().runCommand("meridian body realm @a true_qi");
+        fillGas(world);
+        world.getServer().runCommand("meridian technique learn @a " + PREFIX + "lower");
+        world.getServer().runOnServer(server -> {
+            var player = server.getPlayerList().getPlayer(playerId);
+            player.setItemInHand(InteractionHand.MAIN_HAND, stack(PREFIX + "lower_scroll"));
+        });
+        context.waitTicks(SETTLE_TICKS);
+        clearClientPopups(context);
+        context.takeScreenshot(TestScreenshotOptions.of("lower-scroll").disableCounterPrefix());
+        captureCodex(context, "coil", "codex_molten_lower");
+        var arena = prepareP2Arena(context, world, playerId, BlockedAttackSource.SHIELD);
+        var capture = new P2FrameCapture(context, world, arena, "molten-quiver-spring-swap", new ArrayList<>());
+        cast(world, playerId, "molten_flow");
+        captureP2Frames(capture, "流金", FLOW_START_FRAMES);
+        float shieldHealth = defenderHealth(world, arena);
+        cast(world, playerId, "quiver");
+        captureP2Frames(capture, "抖", QUIVER_FRAMES);
+        if (defenderHealth(world, arena) >= shieldHealth) {
+            throw new AssertionError("流金抖未打中举盾者");
+        }
+        world.getServer().runOnServer(server -> attackShield(server, playerId, arena));
+        var spring = castFacing(world, playerId, SPRING_BACK);
+        if (spring.getFailure() != TechniqueFailure.TECHNIQUE_FAILURE_UNSPECIFIED) {
+            throw new AssertionError("流金中弹起手失败：" + spring);
+        }
+        captureP2Frames(capture, "弹", P2_POST_CAST_FRAMES);
+        captureStatus(context, "molten", "status-molten");
+        setWeapon(world, playerId, Items.STICK);
+        captureP2Frames(capture, "换物", P2_POST_CAST_FRAMES);
+        captureStatus(context, "quenched", "status-quenched-swap");
+        writeP2Record("molten-quiver-spring-swap.tsv", String.join("\n", capture.rows()));
+        captureWater(context, world, playerId);
+    }
+
+    private static float defenderHealth(TestSingleplayerContext world, P2Arena arena) {
+        // 录像须拍到流金抖穿盾的实际命中。
+        return world.getServer().computeOnServer(server -> {
+            LivingEntity defender = (LivingEntity) server.overworld().getEntity(arena.defenderId());
+            return defender.getHealth();
+        });
+    }
+
+    private static void fillGas(TestSingleplayerContext world) {
+        // 先腾出内腔，再用真炁境可以支付的相态补满。
+        world.getServer().runCommand("meridian qi set @a 0 all lumen phase gas");
+        world.getServer().runCommand("meridian qi fill @a phase gas");
+    }
+
+    private static void captureWater(ClientGameTestContext context, TestSingleplayerContext world, UUID playerId) {
+        // 等上一次冷却与淬硬自然结束，再让人物实际入水。
+        context.waitTicks(FLOW_COOLDOWN_TICKS);
+        setWeapon(world, playerId, Items.GOLDEN_SWORD);
+        fillGas(world);
+        cast(world, playerId, "molten_flow");
+        context.waitTicks(FLOW_START_FRAMES);
+        world.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayer(playerId);
+            player.level().setBlockAndUpdate(player.blockPosition(), Blocks.WATER.defaultBlockState());
+        });
+        context.waitTicks(SETTLE_TICKS);
+        clearClientPopups(context);
+        context.takeScreenshot(TestScreenshotOptions.of("molten-water-ended").disableCounterPrefix());
+        captureStatus(context, "quenched", "status-quenched-water");
+    }
+
+    private static void captureStatus(ClientGameTestContext context, String id, String screenshot) {
+        // 状态经服务端同步到客户端才打开背包，图标与剩余时间同框。
+        var effect = TechniqueStatusBenefits.get(PREFIX + id).effect();
+        context.waitFor(client -> client.player.hasEffect(effect));
+        context.runOnClient(client -> client.gui.setScreen(new InventoryScreen(client.player)));
+        context.waitTicks(SETTLE_TICKS);
+        clearClientPopups(context);
+        context.takeScreenshot(TestScreenshotOptions.of(screenshot).disableCounterPrefix());
+        context.runOnClient(client -> client.gui.setScreen(null));
     }
 
     private static void runP2(ClientGameTestContext context, TestSingleplayerContext world) {
@@ -146,7 +237,7 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
         context.waitFor(client -> client.level.getEntity(arena.cameraEntityId()) != null);
         context.runOnClient(client -> {
             client.gui.setScreen(null);
-            client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            client.options.setCameraType(CameraType.FIRST_PERSON);
             Entity camera = client.level.getEntity(arena.cameraEntityId());
             if (camera == null) {
                 throw new AssertionError("客户端没有收到弹式固定侧面机位");
@@ -190,16 +281,9 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
         target.snapTo(P2_TARGET_X, groundY, P2_PLAYER_Z, P2_TARGET_YAW, P2_LEVEL_PITCH);
         target.setNoAi(true /* aiDisabled */);
         target.setSilent(true /* silent */);
-        ArmorStand caster = new ArmorStand(level, P2_CASTER_X, groundY, P2_PLAYER_Z);
-        caster.setNoGravity(true /* noGravity */);
-        caster.setShowArms(true /* showArms */);
-        caster.setNoBasePlate(true /* noBasePlate */);
-        caster.setYRot(P2_PLAYER_YAW);
-        caster.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.GOLDEN_SWORD));
         level.addFreshEntity(defender);
         level.addFreshEntity(target);
-        level.addFreshEntity(caster);
-        ArmorStand camera = new ArmorStand(level, P2_PLAYER_X, groundY + P2_CAMERA_Y, P2_CAMERA_Z);
+        ArmorStand camera = new ArmorStand(level, CAMERA_CENTER_X, groundY + P2_CAMERA_Y, P2_CAMERA_Z);
         camera.setInvisible(true /* invisible */);
         camera.setNoGravity(true /* noGravity */);
         camera.setYRot(P2_CAMERA_YAW);
@@ -237,7 +321,7 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
             world.getServer().runOnServer(server -> recordHardObject(server, playerId, arena));
             context.waitTicks(P2_BLOCK_VISIBILITY_TICKS);
         }
-        CastOutcome outcome = castSpringBack(world, playerId);
+        CastOutcome outcome = castFacing(world, playerId, SPRING_BACK);
         sendP2Prompt(world, playerId, sourcePrompt(source));
         showP2Prompt(context, sourcePrompt(source));
         return outcome;
@@ -278,20 +362,23 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
         }
     }
 
-    private static CastOutcome castSpringBack(TestSingleplayerContext world, UUID playerId) {
+    private static CastOutcome castFacing(TestSingleplayerContext world, UUID playerId, String techniqueId) {
+        // 施放方向取自真正握剑的玩家，旁观相机不参与瞄准。
         return world.getServer().computeOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayer(playerId);
+            Vec3 look = player.getLookAngle();
             TechniqueReference reference = TechniqueReference.newBuilder()
-                    .setId(SPRING_BACK)
+                    .setId(techniqueId)
                     .setVersion(1)
                     .build();
             HorizontalDirection direction = HorizontalDirection.newBuilder()
-                    .setX(1)
-                    .setZ(0)
+                    .setX(look.x)
+                    .setZ(look.z)
                     .build();
             CastRequest request = CastRequest.newBuilder()
                     .setBodyId(playerId.toString())
                     .setTechnique(reference)
-                    .setCastId("client-spring-back-" + UUID.randomUUID())
+                    .setCastId(UUID.randomUUID().toString())
                     .setDirection(direction)
                     .build();
             return TechniqueFabric.service().cast(playerId, request);
@@ -310,7 +397,7 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
             TechniqueFabric.service().recordBlockedAttack(new BlockedAttackObservation(
                     playerId, "client-expired-" + UUID.randomUUID(), BlockedAttackSource.SHIELD, blockedMillis));
         });
-        CastOutcome outcome = castSpringBack(world, playerId);
+        CastOutcome outcome = castFacing(world, playerId, SPRING_BACK);
         world.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayer(playerId);
             player.sendSystemMessage(Component.literal("弹：阻挡窗口已过期"), true /* overlay */);
@@ -334,6 +421,7 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
             });
             int frameNumber = capture.rows().size() + 1;
             String fileName = String.format(Locale.ROOT, "%s_%03d.png", capture.name(), frameNumber);
+            clearClientPopups(capture.context());
             captureP2Frame(capture.context(), fileName);
             capture.rows().add(frameNumber + "\t" + tick + "\t" + state + "\t" + health);
         }
@@ -450,8 +538,8 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
         context.waitTicks(SETTLE_TICKS);
     }
 
-    private static void captureCodex(ClientGameTestContext context, TestSingleplayerContext world) {
-        // 打开功法谱，功法目录会显示流金剑、上卷以及绕和抖的图标与文案。
+    private static void captureCodex(ClientGameTestContext context, String technique, String screenshot) {
+        // 从真实功法谱定位目标剑式所在卷，保留卷名、图标和文字。
         selectHotbar(context, 1);
         context.runOnClient(client -> client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND));
         context.waitTicks(SETTLE_TICKS);
@@ -463,11 +551,11 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
             Object screen = client.gui.screen();
             selectCodexBook(screen, MOLTEN_SWORD);
             scrollCodexBookIntoView(screen, MOLTEN_SWORD);
-            scrollCodexPageIntoView(screen);
+            scrollCodexPageIntoView(screen, technique);
         });
         clearClientPopups(context);
         context.waitTicks(SETTLE_TICKS);
-        context.takeScreenshot(TestScreenshotOptions.of("codex_molten_sword").disableCounterPrefix());
+        context.takeScreenshot(TestScreenshotOptions.of(screenshot).disableCounterPrefix());
         context.runOnClient(client -> client.gui.setScreen(null));
         context.waitTicks(SETTLE_TICKS);
     }
@@ -535,8 +623,8 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
         }
     }
 
-    private static void scrollCodexPageIntoView(Object screen) {
-        // 右页滚到上卷卷头，保证卷名、图标和两式名称同时进入截图。
+    private static void scrollCodexPageIntoView(Object screen, String technique) {
+        // 按已学的式名找卷，滚到对应卷头。
         try {
             Object panel = codexPanel(screen);
             var contentField = panel.getClass().getDeclaredField("content");
@@ -544,12 +632,17 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
             ParentUIComponent content = (ParentUIComponent) contentField.get(panel);
             ScrollContainer<?> pageScroll = content.childById(ScrollContainer.class, "page-scroll");
             ParentUIComponent page = (ParentUIComponent) pageScroll.child();
-            if (page.children().isEmpty()) {
-                throw new AssertionError("功法谱右页没有上卷内容");
+            String name = Component.translatable("technique.meridian_piglin_sword." + technique).getString();
+            for (UIComponent child : page.children()) {
+                if (child instanceof ParentUIComponent volume && volume.children().stream().anyMatch(
+                        row -> row instanceof LabelComponent label && label.text().getString().equals(name))) {
+                    pageScroll.scrollTo(child);
+                    return;
+                }
             }
-            pageScroll.scrollTo(page.children().get(0));
+            throw new AssertionError("功法谱没有已学的式：" + name);
         } catch (ReflectiveOperationException failure) {
-            throw new AssertionError("无法将上卷滚入功法谱右页", failure);
+            throw new AssertionError("无法将目标卷滚入功法谱右页", failure);
         }
     }
 
@@ -625,22 +718,7 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
 
     private static void cast(TestSingleplayerContext world, UUID playerId, String technique) {
         // 通过正式功法服务提交请求，客户端只负责触发和记录证据。
-        TechniqueReference reference = TechniqueReference.newBuilder()
-                .setId(PREFIX + technique)
-                .setVersion(1)
-                .build();
-        HorizontalDirection direction = HorizontalDirection.newBuilder()
-                .setX(0)
-                .setZ(1)
-                .build();
-        CastRequest request = CastRequest.newBuilder()
-                .setBodyId(playerId.toString())
-                .setTechnique(reference)
-                .setCastId(UUID.randomUUID().toString())
-                .setDirection(direction)
-                .build();
-        CastOutcome outcome = world.getServer().computeOnServer(
-                server -> TechniqueFabric.service().cast(playerId, request));
+        CastOutcome outcome = castFacing(world, playerId, PREFIX + technique);
         if (outcome.getFailure() != TechniqueFailure.TECHNIQUE_FAILURE_UNSPECIFIED) {
             throw new IllegalStateException("客户端施放失败：" + outcome);
         }

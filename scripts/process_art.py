@@ -54,18 +54,21 @@ def remove_magenta(image: Image.Image) -> Image.Image:
     return image
 
 
-def output_background(raw_dir: Path, resource_dir: Path) -> None:
+def output_background(raw_dir: Path, resource_dir: Path, volume: str) -> None:
     """保留阅读底图的全幅 RGB 画布，正文区域由运行时绘制。"""
-    source = read_raw(raw_dir / "upper_background.png")
+    source = read_raw(raw_dir / f"{volume}_background.png")
     expected = (1536, 1024)
     if source.size != expected:
         raise ValueError(f"背景尺寸是 {source.size}，预期 {expected}")
-    save_new(source.convert("RGB"), resource_dir / "gui/scroll/upper.png")
+    background = source.convert("RGB")
+    if volume == "lower":
+        background = background.resize((768, 512), Image.Resampling.BOX)
+    save_new(background, resource_dir / f"gui/scroll/{volume}.png")
 
 
-def output_scroll(raw_dir: Path, resource_dir: Path) -> None:
+def output_scroll(raw_dir: Path, resource_dir: Path, volume: str) -> None:
     """去除品红底并把卷轴居中为原版物品格尺寸。"""
-    source = remove_magenta(read_raw(raw_dir / "upper_scroll.png"))
+    source = remove_magenta(read_raw(raw_dir / f"{volume}_scroll.png"))
     bounds = source.getbbox()
     if bounds is None:
         raise ValueError("卷轴没有可见主体")
@@ -82,7 +85,7 @@ def output_scroll(raw_dir: Path, resource_dir: Path) -> None:
     canvas.alpha_composite(quantized, (left, top))
     alpha = canvas.getchannel("A").point(lambda value: 255 if value >= 128 else 0)
     canvas.putalpha(alpha)
-    save_new(canvas, resource_dir / "item/upper_scroll.png")
+    save_new(canvas, resource_dir / f"item/{volume}_scroll.png")
 
 
 def normalize_icon(image: Image.Image) -> Image.Image:
@@ -107,29 +110,36 @@ def normalize_icon(image: Image.Image) -> Image.Image:
     return limited
 
 
-def output_technique(raw_dir: Path, resource_dir: Path, name: str) -> None:
-    """把一个方形原稿输出为目录使用的 32 和 64 像素图标。"""
+def output_icon(raw_dir: Path, icon_dir: Path, name: str) -> None:
+    """把式或效果原稿输出为 32 和 64 像素图标。"""
     source = read_raw(raw_dir / f"{name}.png").convert("RGB")
     if source.width != source.height:
         raise ValueError(f"{name} 图标不是方图：{source.size}")
     sampled = source.resize((ICON_LARGE, ICON_LARGE), Image.Resampling.NEAREST)
     icon_64 = normalize_icon(sampled)
     save_new(icon_64.resize((ICON_SIZE, ICON_SIZE), Image.Resampling.NEAREST),
-             resource_dir / f"gui/technique/{name}.png")
-    save_new(icon_64, resource_dir / f"gui/technique/{name}_64.png")
+             icon_dir / f"{name}.png")
+    save_new(icon_64, icon_dir / f"{name}_64.png")
 
 
 def main() -> None:
     """按固定资源清单生成正式文件，并在文件已存在时立即失败。"""
     parser = argparse.ArgumentParser()
     parser.add_argument("raw_dir", type=Path)
+    parser.add_argument("--volume", choices=("upper", "lower"), default="upper")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     resource_dir = root / "fabric/src/main/resources/assets/meridian_piglin_sword/textures"
-    output_background(args.raw_dir, resource_dir)
-    output_scroll(args.raw_dir, resource_dir)
-    for name in ("wind_around", "quiver", "spring_back"):
-        output_technique(args.raw_dir, resource_dir, name)
+    output_background(args.raw_dir, resource_dir, args.volume)
+    output_scroll(args.raw_dir, resource_dir, args.volume)
+    if args.volume == "lower":
+        techniques = ("coil", "molten_flow")
+        for name in ("molten", "quenched"):
+            output_icon(args.raw_dir, resource_dir / "mob_effect", name)
+    else:
+        techniques = ("wind_around", "quiver", "spring_back")
+    for name in techniques:
+        output_icon(args.raw_dir, resource_dir / "gui/technique", name)
 
 
 if __name__ == "__main__":

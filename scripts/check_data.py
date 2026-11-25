@@ -2,7 +2,34 @@
 
 from pathlib import Path
 import json
+import struct
 import sys
+
+
+def check_lower_resources(assets: Path) -> None:
+    textures = assets / "textures"
+    sizes = {"gui/scroll/lower": (768, 512), "item/lower_scroll": (32, 32)}
+    keys = {"volume.meridian_piglin_sword.lower", "item.meridian_piglin_sword.lower_scroll",
+            "technique.meridian_piglin_sword.sword_required", "technique.meridian_piglin_sword.blade_too_hard"}
+    keys.update(("volume.meridian_piglin_sword.lower.note", "codex.power.meridian_piglin_sword.lower"))
+    for directory, section, suffix, names in (
+            ("gui/technique", "technique", "note", ("coil", "molten_flow")),
+            ("mob_effect", "effect", "note", ("molten", "quenched"))):
+        for name in names:
+            sizes[f"{directory}/{name}"] = (32, 32)
+            sizes[f"{directory}/{name}_64"] = (64, 64)
+            key = f"{section}.meridian_piglin_sword.{name}"
+            keys.update((key, f"{key}.{suffix}"))
+    for name, size in sizes.items():
+        path = textures / f"{name}.png"
+        with path.open("rb") as image:
+            header = image.read(24)
+        assert header.startswith(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"), f"PNG 文件头无效：{path}"
+        assert struct.unpack(">II", header[16:24]) == size, f"贴图尺寸应为 {size}：{path}"
+    for locale in ("zh_cn", "en_us"):
+        language = json.loads((assets / f"lang/{locale}.json").read_text(encoding="utf-8"))
+        for key in sorted(keys):
+            assert language.get(key, "").strip(), f"{locale} 缺少文案：{key}"
 
 
 def main() -> int:
@@ -21,7 +48,8 @@ def main() -> int:
     for path in resources.rglob("*.json"):
         json.loads(path.read_text(encoding="utf-8"))
     assert not list((root / "fabric/src").rglob("*.java")), "正式包不得有 Java"
-    print("数据检查通过：纯数据清单、双端资源和唯一目录源。")
+    check_lower_resources(resources / "assets/meridian_piglin_sword")
+    print("数据检查通过：纯数据清单、双端资源、下卷贴图与中英文文案、唯一目录源。")
     return 0
 
 

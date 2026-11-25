@@ -2,6 +2,8 @@
   "replace": false,
   "values": [
     "meridian_piglin_sword:quiver_torso_main_hand",
-    "meridian_piglin_sword:quiver_torso_off_hand"
+    "meridian_piglin_sword:quiver_torso_off_hand",
+    "meridian_piglin_sword:heated_quiver_torso_main_hand",
+    "meridian_piglin_sword:heated_quiver_torso_off_hand"
   ]
 }
