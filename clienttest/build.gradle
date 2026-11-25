@@ -2,6 +2,8 @@ plugins { id 'net.fabricmc.fabric-loom' }
 
 description = '流金剑客户端验收：P0 截图和 P2 弹式录像。'
 
+sourceSets.main.java.srcDir rootProject.file('testsupport/src/main/java')
+
 repositories {
     maven { url = 'https://maven.fabricmc.net/' }
     // 寻路核心不参与源码组合，按清单副本的 JAR 仓取用；其位置由工作区产物键提供。
@@ -15,6 +17,8 @@ dependencies {
     localRuntime files(rootProject.project(':fabric').tasks.named('jar'))
     compileOnly libs.owo
     compileOnly files(kizunaWorkspace.artifact('inventory-ui', '', false))
+    compileOnly('dev.kizuna.meridian.humanoid:fabric') { transitive = false }
+    compileOnly('dev.kizuna.meridian.humanoid:server') { transitive = false }
     compileOnly('dev.kizuna.meridian.technique:fabric') { transitive = false }
     compileOnly 'dev.kizuna.meridian.technique:server'
     compileOnly('dev.kizuna.meridian.vanilla:fabric') { transitive = false }

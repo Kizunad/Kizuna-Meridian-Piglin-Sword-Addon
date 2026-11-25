@@ -1,0 +1,8 @@
+{
+  "type": "minecraft:piglin_barter",
+  "pools": [{
+    "rolls": 1,
+    "conditions": [{ "condition": "minecraft:random_chance", "chance": 0.02 }],
+    "entries": [{ "type": "minecraft:item", "name": "meridian_piglin_sword:upper_scroll" }]
+  }]
+}

@@ -66,6 +66,20 @@ volumes {
   id: "meridian_piglin_sword:lower"
   book_id: "meridian_piglin_sword:molten_sword"
   display_name: "流金剑·下卷·流金"
+  scroll_drops { entity_type: "minecraft:piglin" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:zombified_piglin" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:piglin_brute" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:zombie" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:husk" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:drowned" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:zombie_villager" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:villager" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:wandering_trader" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:pillager" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:vindicator" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:evoker" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:witch" chance: 0.05 }
+  scroll_drops { entity_type: "minecraft:illusioner" chance: 0.05 }
   prerequisite_volume_ids: "meridian_piglin_sword:upper"
   techniques { id: "meridian_piglin_sword:coil" version: 1 }
   techniques { id: "meridian_piglin_sword:molten_flow" version: 1 }

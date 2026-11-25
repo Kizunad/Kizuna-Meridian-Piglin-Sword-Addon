@@ -4,6 +4,15 @@ import com.mojang.blaze3d.platform.NativeImage;
 import dev.kizuna.inventoryui.client.status.StatusIcons;
 import dev.kizuna.inventoryui.client.status.StatusLayout;
 import dev.kizuna.inventoryui.status.StatusArrangement.Single;
+import dev.kizuna.meridian.humanoid.fabric.HumanoidHealthHost;
+import dev.kizuna.meridian.humanoid.fabric.HumanoidSpeciesBirths;
+import dev.kizuna.meridian.humanoid.server.HumanoidTier;
+import dev.kizuna.meridian.piglinsword.test.SwordTestBodies;
+import dev.kizuna.meridian.protocol.QiDensity;
+import dev.kizuna.meridian.protocol.pb.BodyMessages.QiPhase;
+import dev.kizuna.meridian.protocol.pb.MeridianMessages.DebugQi;
+import dev.kizuna.meridian.protocol.pb.MeridianMessages.DebugQiMode;
+import dev.kizuna.meridian.protocol.pb.MeridianMessages.FailureCode;
 import dev.kizuna.meridian.technique.fabric.TechniqueFabric;
 import dev.kizuna.meridian.technique.fabric.world.TechniqueStatusBenefits;
 import dev.kizuna.meridian.technique.protocol.pb.TechniqueMessages.BlockedAttackSource;
@@ -33,35 +42,46 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.Screenshot;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.tutorial.TutorialSteps;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.behavior.EntityTracker;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.monster.illager.Vindicator;
+import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.storage.loot.BuiltInLootTables;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.Vec2;
-import net.fabricmc.loader.api.FabricLoader;
 
 /** P0 客户端证据，截图功法谱、卷轴和两种持剑施放反馈。 */
 public final class PiglinSwordClientTest implements FabricClientGameTest {
@@ -115,6 +135,14 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
                 runSplash(context, world);
                 return;
             }
+            if ("desperation".equals(CLIENT_TEST_CLIP)) {
+                captureDesperation(context, world);
+                return;
+            }
+            if ("p7".equals(CLIENT_TEST_CLIP)) {
+                captureSources(context, world);
+                return;
+            }
             if ("p3".equals(CLIENT_TEST_CLIP)) {
                 runP3(context, world);
                 return;
@@ -130,6 +158,248 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
             captureWind(context, world, playerId, target);
             captureQuiver(context, world, playerId, target);
         }
+    }
+
+    private static final int MOB_FRAMES = 40;
+    private static final int LOOT_SEED_LIMIT = 512;
+
+    private static void captureSources(ClientGameTestContext context, TestSingleplayerContext world) {
+        // 从实际堡垒箱取卷，玩家首次阅读时服务端会发送卷面。
+        UUID playerId = preparePlayer(context, world);
+        world.getServer().runCommand("clear @a " + UPPER_SCROLL);
+        var chestPos = world.getServer().computeOnServer(server -> openBastionChest(server, playerId));
+        context.waitFor(client -> client.gui.screen() instanceof ContainerScreen);
+        clearClientPopups(context);
+        context.waitTicks(SETTLE_TICKS);
+        context.takeScreenshot(TestScreenshotOptions.of("bastion-treasure-scroll").disableCounterPrefix());
+        world.getServer().runOnServer(server -> takeChestScroll(server, playerId, chestPos));
+        captureScroll(context, "upper_scroll_item", "upper_scroll_page");
+        world.getServer().runCommand("gamemode survival @a");
+        world.getServer().runCommand("meridian body realm @a true_qi");
+        fillGas(world);
+        world.getServer().runCommand("meridian technique learn @a " + PREFIX + "lower");
+        setWeapon(world, playerId, Items.GOLDEN_SWORD);
+        cast(world, playerId, "molten_flow");
+        captureStatus(context, "molten", "status-molten");
+        setWeapon(world, playerId, Items.STICK);
+        captureStatus(context, "quenched", "status-quenched");
+        captureMob(context, world, playerId, EntityTypes.PIGLIN);
+        captureMob(context, world, playerId, EntityTypes.ZOMBIFIED_PIGLIN);
+        world.getServer().runCommand("gamemode creative @a");
+        context.runOnClient(client -> client.setCameraEntity(client.player));
+        captureCodex(context, "wind_around", "bastion_scroll_codex");
+    }
+
+    private static BlockPos openBastionChest(MinecraftServer server, UUID playerId) {
+        // 筛选可复验的实际箱表种子，保留同箱抽到的原版物品。
+        var player = server.getPlayerList().getPlayer(playerId);
+        var level = server.overworld();
+        var pos = player.blockPosition().east();
+        level.setBlockAndUpdate(pos, Blocks.CHEST.defaultBlockState());
+        var chest = (ChestBlockEntity) level.getBlockEntity(pos);
+        var params = new LootParams.Builder(level).withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(pos))
+                .create(LootContextParamSets.CHEST);
+        var table = server.reloadableRegistries().getLootTable(BuiltInLootTables.BASTION_TREASURE);
+        var scroll = stack(UPPER_SCROLL).getItem();
+        for (long seed = 1; seed <= LOOT_SEED_LIMIT; seed++) {
+            chest.clearContent();
+            table.fill(chest, params, seed);
+            if (chest.hasAnyMatching(item -> item.is(scroll))) {
+                player.openMenu(chest);
+                return pos;
+            }
+        }
+        throw new AssertionError("堡垒宝箱没有开出上卷");
+    }
+
+    private static void takeChestScroll(MinecraftServer server, UUID playerId, BlockPos chestPos) {
+        // 把箱中同一份卷移入主手，然后腾出拍摄场地。
+        var player = server.getPlayerList().getPlayer(playerId);
+        var chest = (ChestBlockEntity) server.overworld().getBlockEntity(chestPos);
+        var scroll = stack(UPPER_SCROLL).getItem();
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            if (chest.getItem(slot).is(scroll)) {
+                player.setItemInHand(InteractionHand.MAIN_HAND, chest.removeItemNoUpdate(slot));
+                break;
+            }
+        }
+        player.closeContainer();
+        chest.clearContent();
+        server.overworld().setBlockAndUpdate(chestPos, Blocks.AIR.defaultBlockState());
+    }
+
+    private static UUID spawnMob(MinecraftServer server, UUID playerId, EntityType<? extends Mob> type,
+                                 P2Arena arena) {
+        // 让物种沿用各自的仇恨入口，记录施放者身份供逐帧核对。
+        var level = server.overworld();
+        var defender = (Vindicator) level.getEntity(arena.defenderId());
+        var caster = type.create(level, EntitySpawnReason.COMMAND);
+        caster.setPos(P2_PLAYER_X, defender.getY(), P2_PLAYER_Z);
+        caster.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.GOLDEN_SWORD));
+        caster.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+        HumanoidSpeciesBirths.birth(caster, HumanoidTier.TRUE_QI);
+        level.addFreshEntity(caster);
+        level.getEntity(arena.targetId()).discard();
+        server.getPlayerList().getPlayer(playerId).setGameMode(GameType.SPECTATOR);
+        if (caster instanceof Piglin piglin) {
+            piglin.getBrain().setMemory(MemoryModuleType.ANGRY_AT, defender.getUUID());
+        } else {
+            var qi = DebugQi.newBuilder()
+                    .setMode(DebugQiMode.FILL_LUMENS)
+                    .setDensity(QiDensity.baseline(QiPhase.GAS))
+                    .build();
+            if (HumanoidHealthHost.debugQi(caster, qi) != FailureCode.FAILURE_CODE_UNSPECIFIED) {
+                throw new AssertionError("尸修录像夹具未能给手经补元");
+            }
+            caster.setTarget(defender);
+        }
+        return caster.getUUID();
+    }
+
+    private static void captureMob(ClientGameTestContext context, TestSingleplayerContext world,
+                                   UUID playerId, EntityType<? extends Mob> type) {
+        // 沿用固定侧机位，将举盾卫道士交给原版仇恨和类人施放入口。
+        var arena = prepareP2Arena(context, world, playerId, BlockedAttackSource.SHIELD);
+        var casterId = world.getServer().computeOnServer(server -> spawnMob(server, playerId, type, arena));
+        clearClientPopups(context);
+        String path = BuiltInRegistries.ENTITY_TYPE.getKey(type).getPath();
+        List<String> rows = new ArrayList<>();
+        rows.add("frame\tworld_tick\tactivity\theld\tcast\ttarget\tphase");
+        boolean sawWind = false;
+        for (int frame = 0; frame < MOB_FRAMES; frame++) {
+            context.waitTicks(1);
+            var sample = world.getServer().computeOnServer(server -> sampleMob(server, casterId));
+            sawWind |= sample.form().equals(PREFIX + "wind_around") && arena.defenderId().equals(sample.target());
+            rows.add(frame + "\t" + sample.tick() + "\t" + sample.activity() + "\t" + sample.weapon()
+                    + "\t" + sample.form() + "\t" + sample.target() + "\t" + sample.phase());
+            captureP2Frame(context, String.format(Locale.ROOT, "%s-wind-%03d.png", path, frame));
+        }
+        writeP2Record(path + "-wind.tsv", String.join("\n", rows));
+        if (!sawWind) {
+            throw new AssertionError(path + " 没有对举盾目标使用绕");
+        }
+    }
+
+    private static final double DYING_HEALTH = 0.25;
+    private static final int ENGAGE_FRAME = 8;
+
+    private static void captureDesperation(ClientGameTestContext context, TestSingleplayerContext world) {
+        // 固定侧面机位，先记录濒死猪灵的热剑，再恢复原版 AI 并接敌。
+        UUID playerId = preparePlayer(context, world);
+        var arena = prepareP2Arena(context, world, playerId, BlockedAttackSource.SHIELD);
+        var serverContext = world.getServer();
+        var casterId = serverContext.computeOnServer(server -> prepareDyingPiglin(server, playerId, arena));
+        context.runOnClient(client -> {
+            client.setCameraEntity(client.level.getEntity(arena.cameraEntityId()));
+            if (!client.gui.hud.isHidden()) {
+                client.gui.hud.toggle();
+            }
+        });
+        var rows = new ArrayList<String>();
+        rows.add("frame\tworld_tick\thealth\tmax_health\theld\thot\tcast\tphase\tcast_target\tcoated\tyaw\tdistance");
+        boolean sawStart = false;
+        boolean sawHit = false;
+        for (int frame = 0; frame < MOB_FRAMES; frame++) {
+            if (frame == ENGAGE_FRAME) {
+                serverContext.runOnServer(server -> engagePiglin(server, casterId, arena.defenderId()));
+            }
+            context.waitTicks(1);
+            var sample = serverContext.computeOnServer(server -> splashFrame(server, casterId, arena.defenderId()));
+            var mob = sample.mob();
+            sawStart |= mob.form().equals(PREFIX + "gold_splash") && arena.defenderId().equals(mob.target());
+            sawHit |= sawStart && mob.weapon().equals(Identifier.withDefaultNamespace("air")) && sample.coated();
+            rows.add(frame + "\t" + sample.row());
+            captureP2Frame(context, String.format(Locale.ROOT, "dying-splash-%03d.png", frame));
+        }
+        writeP2Record("dying-splash.tsv", String.join("\n", rows));
+        if (!sawHit) {
+            throw new AssertionError("未拍到猪灵对当前敌人起泼金、耗剑和挂金");
+        }
+    }
+
+    private static UUID prepareDyingPiglin(MinecraftServer server, UUID playerId, P2Arena arena) {
+        // 双方沿东西轴站定，镜头从北侧观察；把身体、头部与原版 AI 的初始朝向对齐。
+        var id = spawnMob(server, playerId, EntityTypes.PIGLIN, arena);
+        var level = server.overworld();
+        var original = (Piglin) level.getEntity(id);
+        var caster = SwordTestBodies.atHealth(original, EntityTypes.PIGLIN, DYING_HEALTH);
+        // 原版寻路指向格心；横向站在格线上会让猪灵起手后转向斜前方。
+        var origin = Vec3.atBottomCenterOf(caster.blockPosition());
+        caster.snapTo(origin, P2_PLAYER_YAW, P2_LEVEL_PITCH);
+        caster.setYHeadRot(P2_PLAYER_YAW);
+        caster.setYBodyRot(P2_PLAYER_YAW);
+        caster.setNoAi(true /* noAi */);
+        var defender = (Mob) level.getEntity(arena.defenderId());
+        defender.snapTo(origin.add(P2_DEFENDER_X, 0, 0), P2_DEFENDER_YAW, P2_LEVEL_PITCH);
+        defender.setYHeadRot(P2_DEFENDER_YAW);
+        defender.setYBodyRot(P2_DEFENDER_YAW);
+        TechniqueStatusBenefits.apply(caster, TechniqueStatusBenefits.get(PREFIX + "molten").benefit());
+        return caster.getUUID();
+    }
+
+    private static void engagePiglin(MinecraftServer server, UUID casterId, UUID targetId) {
+        // 唤回原目标，起手与耗剑交给服务端正常决策和施放。
+        var caster = (Piglin) server.overworld().getEntity(casterId);
+        var qi = DebugQi.newBuilder()
+                .setMode(DebugQiMode.FILL_LUMENS)
+                .setDensity(QiDensity.baseline(QiPhase.GAS))
+                .build();
+        if (HumanoidHealthHost.debugQi(caster, qi) != FailureCode.FAILURE_CODE_UNSPECIFIED) {
+            throw new AssertionError("猪灵录像夹具经脉补元失败");
+        }
+        var target = (Mob) server.overworld().getEntity(targetId);
+        caster.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, target);
+        caster.getBrain().setMemory(MemoryModuleType.ANGRY_AT, targetId);
+        caster.getBrain().setMemory(MemoryModuleType.LOOK_TARGET,
+                new EntityTracker(target, true /* trackEyeHeight */));
+        caster.setNoAi(false /* noAi */);
+    }
+
+    private record SplashFrame(MobFrame mob, float health, float maximum, boolean hot, boolean coated, Vec2 aim) {
+        String row() {
+            // 同帧输出装备、生命、施放请求和目标收到的正式状态。
+            return mob.tick() + "\t" + health + "\t" + maximum + "\t" + mob.weapon() + "\t" + hot + "\t"
+                    + mob.form() + "\t" + mob.phase() + "\t" + mob.target() + "\t" + coated
+                    + "\t" + aim.x + "\t" + aim.y;
+        }
+    }
+
+    private static SplashFrame splashFrame(MinecraftServer server, UUID casterId, UUID targetId) {
+        // 只在服务器线程取一份这一刻的观测。
+        var level = server.overworld();
+        var caster = (Mob) level.getEntity(casterId);
+        var target = (Mob) level.getEntity(targetId);
+        var mob = sampleMob(server, casterId);
+        boolean hot = caster.hasEffect(TechniqueStatusBenefits.get(PREFIX + "molten").effect());
+        boolean coated = target.hasEffect(TechniqueStatusBenefits.get(PREFIX + "gold_caked").effect());
+        var aim = new Vec2(caster.getYRot(), caster.distanceTo(target));
+        return new SplashFrame(mob, caster.getHealth(), caster.getMaxHealth(), hot, coated, aim);
+    }
+
+    private record MobFrame(long tick, String activity, Identifier weapon, String form, UUID target, String phase) { }
+
+    private static MobFrame sampleMob(MinecraftServer server, UUID casterId) {
+        // 用同一服务器刻的装备、仇恨和起式记录为这一帧作证。
+        var level = server.overworld();
+        var caster = (Mob) level.getEntity(casterId);
+        String activity = "goal";
+        if (caster instanceof Piglin piglin) {
+            activity = piglin.getBrain().getActiveNonCoreActivity().map(Object::toString).orElse("");
+        }
+        var weapon = BuiltInRegistries.ITEM.getKey(caster.getMainHandItem().getItem());
+        var cast = TechniqueFabric.service().observe(casterId).flatMap(observation -> observation.cast());
+        long tick = level.getGameTime();
+        if (cast.isEmpty()) {
+            return new MobFrame(tick, activity, weapon, "", null, "");
+        }
+        var forecast = cast.orElseThrow();
+        var request = forecast.active().getRequest();
+        var targetId = request.getTargetId();
+        UUID target = null;
+        if (!targetId.isEmpty()) {
+            target = UUID.fromString(targetId);
+        }
+        return new MobFrame(tick, activity, weapon, request.getTechnique().getId(), target, forecast.phase().name());
     }
 
     private static final int FLOW_START_FRAMES = 26;
@@ -435,6 +705,11 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
         context.runOnClient(client -> client.gui.setScreen(new InventoryScreen(client.player)));
         context.waitTicks(SETTLE_TICKS);
         clearClientPopups(context);
+        context.runOnClient(client -> {
+            if (!client.player.hasEffect(effect)) {
+                throw new AssertionError("拍摄时效果已经结束：" + id);
+            }
+        });
         context.takeScreenshot(TestScreenshotOptions.of(screenshot).disableCounterPrefix());
         context.runOnClient(client -> client.gui.setScreen(null));
     }
@@ -734,7 +1009,14 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
                                   P2Arena arena, String name, List<String> rows) { }
 
     private static UUID prepare(ClientGameTestContext context, TestSingleplayerContext world) {
-        // 建立可重复的创造模式场景，学习上卷并把卷轴、功法谱和两把剑放进快捷栏。
+        // 已学上卷的练式场景用命令准备招式。
+        var playerId = preparePlayer(context, world);
+        world.getServer().runCommand("meridian technique learn @a " + PREFIX + "upper");
+        return playerId;
+    }
+
+    private static UUID preparePlayer(ClientGameTestContext context, TestSingleplayerContext world) {
+        // 建立可重复的场景，准备经脉和快捷栏。
         world.getConnection().waitForChunksRender();
         world.getServer().runCommand("time set noon");
         world.getServer().runCommand("weather clear");
@@ -743,7 +1025,6 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
         world.getServer().runCommand("meridian opening complete @a all");
         world.getServer().runCommand("meridian body realm @a wandering_qi");
         world.getServer().runCommand("meridian qi fill @a");
-        world.getServer().runCommand("meridian technique learn @a " + PREFIX + "upper");
         UUID playerId = world.getServer().computeOnServer(
                 server -> server.getPlayerList().getPlayers().getFirst().getUUID());
         world.getServer().runOnServer(server -> {
@@ -768,9 +1049,14 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         clearClientPopups(context);
         context.waitTicks(SETTLE_TICKS);
+        clearClientPopups(context);
         context.takeScreenshot(TestScreenshotOptions.of(itemShot).disableCounterPrefix());
         context.runOnClient(client -> client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND));
         context.waitTicks(SETTLE_TICKS);
+        if ("p7".equals(CLIENT_TEST_CLIP)) {
+            context.waitFor(client -> client.gui.screen() != null
+                    && client.gui.screen().getClass().getSimpleName().equals("TechniqueScrollScreen"));
+        }
         clearClientPopups(context);
         context.takeScreenshot(TestScreenshotOptions.of(pageShot).disableCounterPrefix());
         context.runOnClient(client -> client.gui.setScreen(null));
@@ -790,7 +1076,13 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
             Object screen = client.gui.screen();
             selectCodexBook(screen, MOLTEN_SWORD);
             scrollCodexBookIntoView(screen, MOLTEN_SWORD);
-            scrollCodexPageIntoView(screen, technique);
+        });
+        if ("p7".equals(CLIENT_TEST_CLIP)) {
+            clearClientPopups(context);
+            context.takeScreenshot(TestScreenshotOptions.of("bastion_scroll_book").disableCounterPrefix());
+        }
+        context.runOnClient(client -> {
+            scrollCodexPageIntoView(client.gui.screen(), technique);
         });
         clearClientPopups(context);
         context.waitTicks(SETTLE_TICKS);

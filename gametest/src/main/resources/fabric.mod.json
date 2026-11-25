@@ -11,7 +11,9 @@
     "fabric-gametest": [
       "dev.kizuna.meridian.piglinsword.PiglinSwordGameTest",
       "dev.kizuna.meridian.piglinsword.PiglinSwordCoilGameTest",
-      "dev.kizuna.meridian.piglinsword.PiglinSwordSplashGameTest"
+      "dev.kizuna.meridian.piglinsword.PiglinSwordSplashGameTest",
+      "dev.kizuna.meridian.piglinsword.PiglinSwordDesperationGameTest",
+      "dev.kizuna.meridian.piglinsword.PiglinSwordSourcesGameTest"
     ]
   },
   "depends": {
