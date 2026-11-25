@@ -26,5 +26,10 @@
   "effect.meridian_piglin_sword.quenched": "淬硬",
   "effect.meridian_piglin_sword.quenched.note": "金刃冷透了。再抖动手腕，剑尖也弯不过盾沿。",
   "technique.meridian_piglin_sword.sword_required": "流金剑需要剑",
-  "technique.meridian_piglin_sword.blade_too_hard": "这把剑太硬"
+  "technique.meridian_piglin_sword.blade_too_hard": "这把剑太硬",
+  "technique.meridian_piglin_sword.gold_splash": "泼金",
+  "technique.meridian_piglin_sword.gold_splash.note": "把烧软的金刃甩出去，落在身上的金壳冷透了才脱落。",
+  "effect.meridian_piglin_sword.gold_caked": "挂金",
+  "effect.meridian_piglin_sword.gold_caked.note": "金液凝在身上，沾着金壳的地方动起来发沉。",
+  "technique.meridian_piglin_sword.heat_required": "剑身还没烧软"
 }

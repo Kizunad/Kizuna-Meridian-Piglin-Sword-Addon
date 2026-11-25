@@ -69,6 +69,7 @@ volumes {
   prerequisite_volume_ids: "meridian_piglin_sword:upper"
   techniques { id: "meridian_piglin_sword:coil" version: 1 }
   techniques { id: "meridian_piglin_sword:molten_flow" version: 1 }
+  techniques { id: "meridian_piglin_sword:gold_splash" version: 1 }
 }
 
 definitions {
@@ -610,5 +611,114 @@ definitions {
     icon_id: "meridian_piglin_sword:molten_flow"
     display_name: "流金"
     description: "运气暖透金刃，垂下的剑尖能兜过盾沿。"
+  }
+}
+
+definitions {
+  id: "meridian_piglin_sword:gold_splash"
+  version: 1
+  category: ATTACK
+  minimum_realm: TRUE_QI
+  held_item_rules {
+    required_heat_status: "meridian_piglin_sword:molten"
+    consumption_strategy: CONSUME_SELECTED_STACK
+    required_item_tags: "meridian_piglin_sword:soft_blades"
+    refusals {
+      item_tag: "meridian_piglin_sword:soft_blades" reason: "剑身还没烧软"
+      translation_key: "technique.meridian_piglin_sword.heat_required"
+    }
+    refusals {
+      item_tag: "meridian_piglin_sword:swords" reason: "这把剑太硬"
+      translation_key: "technique.meridian_piglin_sword.blade_too_hard"
+    }
+    refusals { reason: "流金剑需要剑" translation_key: "technique.meridian_piglin_sword.sword_required" }
+    categories {
+      id: "soft_blades" selection_priority: 0 base_damage_source: ITEM_ATTACK_DAMAGE
+      base_damage { value: 1 unit: RATIO }
+      injury_kind: CUTTING shield_interaction: NO_SHIELD_BREAK can_break_doors: false
+    }
+    durability { multiplier { value: 1 unit: RATIO } }
+    selection_order: CATEGORY_PRIORITY
+    selection_order: DURABILITY_MULTIPLIER
+    selection_order: PREFER_MAIN_HAND
+  }
+  slots {
+    id: "hand_meridian"
+    module: MERIDIAN
+    tags: "human:hand_meridian"
+    minimum_count: 2
+    maximum_count: 6
+    require_opened: true
+  }
+  slots {
+    id: "foot_meridian" module: MERIDIAN tags: "human:foot_meridian"
+    minimum_count: 1 maximum_count: 6 require_opened: true
+  }
+  slots {
+    id: "arm_muscle"
+    module: TISSUE
+    tags: "human:arm_muscle"
+    minimum_count: 1
+    maximum_count: 6
+  }
+  cost {
+    qi {
+      slot_id: "hand_meridian"
+      phase: GAS
+      matching: ANY_ATTRIBUTE_AT_LEAST_PHASE
+      amount { value: 4 unit: QI }
+      distribution: EVEN
+    }
+  }
+  phases {
+    warmup_millis: 600
+    active_millis: 0
+    recovery_millis: 350
+    interruptible_by_damage: true
+  }
+  cooldown_millis: 0
+  effects {
+    at_millis: 0
+    presentation {
+      id: "meridian_piglin_sword:piglin_sword_gold_splash"
+      duration: UNTIL_RECOVERY_END
+      start_millis: 0
+    }
+  }
+  effects {
+    at_millis: 600
+    weapon_strike {
+      shape: SECTOR
+      distance { value: 4 unit: METER }
+      angle { value: 60 unit: DEGREE }
+      facing_offset { value: 0 unit: DEGREE }
+      multiplier { value: 1.5 unit: RATIO }
+      maximum_targets: 128
+      cast_target_limit: 128
+      knockback { value: 0 unit: RATIO }
+      can_two_hand: false
+      two_hand_multiplier { value: 1 unit: RATIO }
+      break_shield: false
+      last_strike: true
+      durability_base: 1
+      shield_cooldown_millis: 0
+      shield_break_millis: 0
+      dedup_group: "gold_splash"
+      main_hand_damage_type_id: "meridian_piglin_sword:gold_splash_main_hand"
+      off_hand_damage_type_id: "meridian_piglin_sword:gold_splash_off_hand"
+      splash {
+        coating { id: "meridian_piglin_sword:gold_caked" duration_millis: 8000 color_rgb: 13940521 plain {} }
+        tempo_multiplier: 0.75
+        max_parts: 3
+        drop_item: "minecraft:gold_nugget"
+        drops_per_target: 2
+        drop_limit: 9
+      }
+    }
+  }
+  presentation {
+    icon_id: "meridian_piglin_sword:gold_splash"
+    display_name: "泼金"
+    description: "把烧软的金刃甩出去，落在身上的金壳冷透了才脱落。"
   }
 }

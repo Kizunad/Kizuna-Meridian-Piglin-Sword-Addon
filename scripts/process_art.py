@@ -126,14 +126,20 @@ def main() -> None:
     """按固定资源清单生成正式文件，并在文件已存在时立即失败。"""
     parser = argparse.ArgumentParser()
     parser.add_argument("raw_dir", type=Path)
-    parser.add_argument("--volume", choices=("upper", "lower"), default="upper")
-    parser.add_argument("--effect", choices=("coiled", "coiling"), action="append")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--volume", choices=("upper", "lower"), default="upper")
+    group.add_argument("--splash", action="store_true", help="仅生成泼金与挂金的新图标")
+    group.add_argument("--effect", choices=("coiled", "coiling"), action="append")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     resource_dir = root / "fabric/src/main/resources/assets/meridian_piglin_sword/textures"
     if args.effect:
         for name in args.effect:
             output_icon(args.raw_dir, resource_dir / "mob_effect", name)
+        return
+    if args.splash:
+        output_icon(args.raw_dir, resource_dir / "gui/technique", "gold_splash")
+        output_icon(args.raw_dir, resource_dir / "mob_effect", "gold_caked")
         return
     output_background(args.raw_dir, resource_dir, args.volume)
     output_scroll(args.raw_dir, resource_dir, args.volume)

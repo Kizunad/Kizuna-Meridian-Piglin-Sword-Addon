@@ -26,5 +26,10 @@
   "effect.meridian_piglin_sword.quenched": "Quenched",
   "effect.meridian_piglin_sword.quenched.note": "The gold has cooled stiff. Even a flick of the wrist can no longer bend its point around a shield.",
   "technique.meridian_piglin_sword.sword_required": "Molten Sword requires a sword",
-  "technique.meridian_piglin_sword.blade_too_hard": "This blade is too stiff"
+  "technique.meridian_piglin_sword.blade_too_hard": "This blade is too stiff",
+  "technique.meridian_piglin_sword.gold_splash": "Gold Splash",
+  "technique.meridian_piglin_sword.gold_splash.note": "Fling the molten blade. The gold clings where it lands until the shell cools and falls away.",
+  "effect.meridian_piglin_sword.gold_caked": "Caked in Gold",
+  "effect.meridian_piglin_sword.gold_caked.note": "A crust of gold weighs down the parts it clings to.",
+  "technique.meridian_piglin_sword.heat_required": "The blade is still cold"
 }

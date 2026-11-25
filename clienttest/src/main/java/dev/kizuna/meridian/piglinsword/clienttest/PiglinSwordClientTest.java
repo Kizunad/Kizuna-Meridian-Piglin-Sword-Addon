@@ -111,6 +111,10 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
                 runCoil(context, world);
                 return;
             }
+            if ("p5".equals(CLIENT_TEST_CLIP)) {
+                runSplash(context, world);
+                return;
+            }
             if ("p3".equals(CLIENT_TEST_CLIP)) {
                 runP3(context, world);
                 return;
@@ -120,7 +124,7 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
                 return;
             }
             UUID playerId = prepare(context, world);
-            captureScroll(context, world);
+            captureScroll(context, "upper_scroll_item", "upper_scroll_page");
             captureCodex(context, "wind_around", "codex_molten_sword");
             Vindicator target = spawnTarget(world, playerId);
             captureWind(context, world, playerId, target);
@@ -268,6 +272,92 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
 
     private static final int QUIVER_FRAMES = 22;
     private static final int FLOW_COOLDOWN_TICKS = 800;
+
+    private static final int SPLASH_RELEASE_FRAMES = 16;
+    private static final int COATING_SECONDS = 8;
+    private static final int FRAMES_PER_SECOND = 20;
+    private static final int COATING_FRAMES = COATING_SECONDS * FRAMES_PER_SECOND;
+    private static final double SPLASH_TARGET_X = 3;
+    private static final double SPLASH_TARGET_Z = 1.15;
+    private static final float SPLASH_VIEW_PITCH = 16;
+    private static final int SPLASH_SWORD_SLOT = 2;
+    private static final int SPLASH_LANDING_FRAMES = 32;
+    private static final int TWO_TARGET_REFUND = 4;
+
+    private static void runSplash(ClientGameTestContext context, TestSingleplayerContext world) {
+        // 从生存玩家的视角拍双目标、持剑手与目标脚下的落点。
+        UUID playerId = learnSplash(context, world);
+        var arena = prepareSplashArena(context, world, playerId);
+        var capture = new P2FrameCapture(context, world, arena, "gold-splash", new ArrayList<>());
+        cast(world, playerId, "molten_flow");
+        captureP2Frames(capture, "流金", FLOW_START_FRAMES);
+        cast(world, playerId, "gold_splash");
+        captureP2Frames(capture, "泼金", SPLASH_RELEASE_FRAMES);
+        verifySplashImpact(world, arena, playerId);
+        captureP2Frames(capture, "挂金至回落", COATING_FRAMES);
+        world.getServer().runOnServer(server -> {
+            var actor = server.getPlayerList().getPlayer(playerId);
+            var level = server.overworld();
+            var area = actor.getBoundingBox().inflate(P2_ENTITY_AREA_RADIUS_X);
+            var items = level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, area);
+            int count = items.stream().map(net.minecraft.world.entity.item.ItemEntity::getItem)
+                    .filter(stack -> stack.is(Items.GOLD_NUGGET)).mapToInt(ItemStack::getCount).sum();
+            if (count != TWO_TARGET_REFUND) {
+                throw new AssertionError("两个目标的回落应为四粒，实际 " + count);
+            }
+        });
+        captureP2Frames(capture, "金粒落地", SPLASH_LANDING_FRAMES);
+        writeP2Record("gold-splash.tsv", String.join("\n", capture.rows()));
+        world.getServer().runCommand("effect give @a " + PREFIX + "gold_caked " + COATING_SECONDS);
+        captureStatus(context, "gold_caked", "gold-caked-inventory");
+    }
+
+    private static P2Arena prepareSplashArena(ClientGameTestContext context, TestSingleplayerContext world,
+                                               UUID playerId) {
+        // 两个目标分列左右，从准心两侧能同时看见受击和金粒落地。
+        selectHotbar(context, SPLASH_SWORD_SLOT);
+        var arena = prepareP2Arena(context, world, playerId, BlockedAttackSource.SHIELD);
+        context.runOnClient(client -> client.setCameraEntity(client.player));
+        world.getServer().runOnServer(server -> {
+            var level = server.overworld();
+            var player = server.getPlayerList().getPlayer(playerId);
+            double y = player.getY();
+            player.teleportTo(level, P2_PLAYER_X, y, P2_PLAYER_Z, java.util.Set.of(),
+                    P2_PLAYER_YAW, SPLASH_VIEW_PITCH, true /* resetCamera */);
+            level.getEntity(arena.defenderId()).setPos(SPLASH_TARGET_X, y, -SPLASH_TARGET_Z);
+            level.getEntity(arena.targetId()).setPos(SPLASH_TARGET_X, y, SPLASH_TARGET_Z);
+        });
+        context.waitTicks(SETTLE_TICKS);
+        return arena;
+    }
+
+    private static UUID learnSplash(ClientGameTestContext context, TestSingleplayerContext world) {
+        // 右键下卷学会三式，随后在功法谱中核对两卷。
+        UUID playerId = prepare(context, world);
+        world.getServer().runCommand("meridian body realm @a true_qi");
+        fillGas(world);
+        world.getServer().runOnServer(server -> server.getPlayerList().getPlayer(playerId)
+                .setItemInHand(InteractionHand.MAIN_HAND, stack(PREFIX + "lower_scroll")));
+        context.waitTicks(SETTLE_TICKS);
+        captureScroll(context, "splash-lower-scroll", "splash-lower-page");
+        captureCodex(context, "wind_around", "splash-codex-upper");
+        captureCodex(context, "gold_splash", "splash-codex-lower");
+        return playerId;
+    }
+
+    private static void verifySplashImpact(TestSingleplayerContext world, P2Arena arena, UUID playerId) {
+        // 录像验证真实受击者身上的状态；另拍的状态栏图用原版命令展示同一注册项。
+        world.getServer().runOnServer(server -> {
+            var actor = server.getPlayerList().getPlayer(playerId);
+            var level = server.overworld();
+            var coating = TechniqueStatusBenefits.get(PREFIX + "gold_caked").effect();
+            var defender = (LivingEntity) level.getEntity(arena.defenderId());
+            var target = (LivingEntity) level.getEntity(arena.targetId());
+            if (!actor.getMainHandItem().isEmpty() || !defender.hasEffect(coating) || !target.hasEffect(coating)) {
+                throw new AssertionError("泼金镜头没有拍到整剑消耗与扇面双目标命中");
+            }
+        });
+    }
 
     private static void runP3(ClientGameTestContext context, TestSingleplayerContext world) {
         // 独立测试存档里学下卷，用真实玩家施放，侧面固定机位拍两式与换物。
@@ -673,15 +763,16 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
         return playerId;
     }
 
-    private static void captureScroll(ClientGameTestContext context, TestSingleplayerContext world) {
-        // 先拍物品图标，再真实右键阅读上卷卷轴。
+    private static void captureScroll(ClientGameTestContext context, String itemShot, String pageShot) {
+        // 先拍手上的卷轴，再打开阅读页。
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         clearClientPopups(context);
         context.waitTicks(SETTLE_TICKS);
-        context.takeScreenshot(TestScreenshotOptions.of("upper_scroll_item").disableCounterPrefix());
+        context.takeScreenshot(TestScreenshotOptions.of(itemShot).disableCounterPrefix());
         context.runOnClient(client -> client.gameMode.useItem(client.player, InteractionHand.MAIN_HAND));
         context.waitTicks(SETTLE_TICKS);
-        context.takeScreenshot(TestScreenshotOptions.of("upper_scroll_page").disableCounterPrefix());
+        clearClientPopups(context);
+        context.takeScreenshot(TestScreenshotOptions.of(pageShot).disableCounterPrefix());
         context.runOnClient(client -> client.gui.setScreen(null));
         context.waitTicks(SETTLE_TICKS);
     }

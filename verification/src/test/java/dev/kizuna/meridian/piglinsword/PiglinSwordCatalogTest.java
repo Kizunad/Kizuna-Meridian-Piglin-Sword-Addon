@@ -25,6 +25,8 @@ public final class PiglinSwordCatalogTest {
     private static final String QUIVER_ID = NAMESPACE + ":quiver";
     private static final String SPRING_BACK_ID = NAMESPACE + ":spring_back";
     private static final double EPSILON = 0.000001D;
+    private static final int SPLASH_WARMUP_MILLIS = 600;
+    private static final double SPLASH_DAMAGE_RATIO = 1.5D;
 
     @Test
     public void productionJarContainsOnlyTheP0DataCatalog() throws Exception {
@@ -49,11 +51,11 @@ public final class PiglinSwordCatalogTest {
         TechniqueCatalog catalog = catalog();
         assertEquals(1, catalog.getBooksCount());
         assertEquals(2, catalog.getVolumesCount());
-        assertEquals(5, catalog.getDefinitionsCount());
+        assertEquals(6, catalog.getDefinitionsCount());
         var lower = catalog.getVolumes(1);
         assertEquals(List.of(VOLUME_ID), lower.getPrerequisiteVolumeIdsList());
-        assertEquals(List.of(NAMESPACE + ":coil", NAMESPACE + ":molten_flow"), lower.getTechniquesList().stream()
-                .map(reference -> reference.getId()).toList());
+        var forms = lower.getTechniquesList().stream().map(reference -> reference.getId()).toList();
+        assertEquals(List.of(NAMESPACE + ":coil", NAMESPACE + ":molten_flow", NAMESPACE + ":gold_splash"), forms);
         var book = catalog.getBooks(0);
         assertEquals(BOOK_ID, book.getId());
         assertEquals(3, book.getHeldItemRules().getCategoriesCount());
@@ -143,6 +145,22 @@ public final class PiglinSwordCatalogTest {
         assertEquals(NAMESPACE + ":spring_back_main_hand", strike.getMainHandDamageTypeId());
         assertEquals(NAMESPACE + ":spring_back_off_hand", strike.getOffHandDamageTypeId());
         assertEquals(0, presentationAtMillis(definition));
+    }
+
+    @Test
+    public void splashReleasesOnTheAnimationStrikeFrame() throws Exception {
+        // 动作起点、剑身消失与局部热伤须共享正式目录的释放时刻。
+        var splash = definition(catalog(), NAMESPACE + ":gold_splash");
+        assertEquals(NAMESPACE + ":piglin_sword_gold_splash", presentationId(splash));
+        assertEquals(0, presentationAtMillis(splash));
+        assertEquals(SPLASH_WARMUP_MILLIS, splash.getPhases().getWarmupMillis());
+        var hits = splash.getEffectsList().stream().filter(TechniqueEffect::hasWeaponStrike).toList();
+        assertEquals(1, hits.size());
+        var hit = hits.getFirst();
+        assertEquals(SPLASH_WARMUP_MILLIS, hit.getAtMillis());
+        var strike = hit.getWeaponStrike();
+        assertEquals(StrikeShape.SECTOR, strike.getShape());
+        assertEquals(SPLASH_DAMAGE_RATIO, strike.getMultiplier().getValue(), EPSILON);
     }
 
     private static TechniqueCatalog catalog() throws IOException {
