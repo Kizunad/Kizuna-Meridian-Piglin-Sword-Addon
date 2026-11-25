@@ -863,7 +863,7 @@ public final class PiglinSwordGameTest {
         });
     }
 
-    private static Fixture lower(GameTestHelper context) {
+    static Fixture lower(GameTestHelper context) {
         // 内存连接没有网络 tick，用原版玩家 tick 推进效果、雨水和盾；结束统一断线。
         Fixture fixture = prepared(context, GameType.SURVIVAL);
         context.runBeforeTestEnd(fixture::close);
@@ -878,7 +878,7 @@ public final class PiglinSwordGameTest {
         return fixture;
     }
 
-    private static void assertCuresKeep(GameTestHelper context, ServerPlayer player, String id) {
+    static void assertCuresKeep(GameTestHelper context, ServerPlayer player, String id) {
         // 给可清除的速度作对照，各走一次牛奶食用与不死图腾的原版保命效果。
         int before = duration(player, id);
         context.assertTrue(before > 0, "净化前缺少状态：" + id);
@@ -892,7 +892,7 @@ public final class PiglinSwordGameTest {
         context.assertTrue(!player.hasEffect(MobEffects.SPEED) && duration(player, id) == before, "图腾清除错误：" + id);
     }
 
-    private static void assertStatusPacket(GameTestHelper context, Fixture fixture, String id, int ticks) {
+    static void assertStatusPacket(GameTestHelper context, Fixture fixture, String id, int ticks) {
         // 剩余刻数按实体 tick 递减，首次同步给客户端的图标和完整时限精确可核。
         var holder = effect(id);
         int entityId = fixture.player.getId();
@@ -954,7 +954,7 @@ public final class PiglinSwordGameTest {
                 .findFirst().orElseThrow().getHp();
     }
 
-    private static List<VanillaDamageFabric.DamageEvent> watchDamage(ServerPlayer player) {
+    static List<VanillaDamageFabric.DamageEvent> watchDamage(ServerPlayer player) {
         // 只记录当前用例的目标，结束时释放观察对象。
         var events = new ArrayList<VanillaDamageFabric.DamageEvent>();
         UUID id = player.getUUID();
@@ -1194,7 +1194,7 @@ public final class PiglinSwordGameTest {
                 && success.swingSource() == InteractionResult.SwingSource.NONE;
     }
 
-    private static CastOutcome cast(ServerPlayer player, String technique, String castId) {
+    static CastOutcome cast(ServerPlayer player, String technique, String castId) {
         // 施放请求只引用玩家身体、目录 ID 和版本，费用与效果仍由目录服务读取。
         TechniqueReference reference = TechniqueReference.newBuilder()
                 .setId(technique)
@@ -1259,9 +1259,9 @@ public final class PiglinSwordGameTest {
         player.snapTo(position.x, position.y, position.z, yaw, PLAYER_PITCH);
     }
 
-    private static final class Fixture implements AutoCloseable {
+    static final class Fixture implements AutoCloseable {
         private final GameTestHelper context;
-        private final ServerPlayer player;
+        final ServerPlayer player;
         private final RecordingConnection connection;
 
         private Fixture(GameTestHelper context) {

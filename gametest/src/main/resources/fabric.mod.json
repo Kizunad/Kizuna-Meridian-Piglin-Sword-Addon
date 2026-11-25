@@ -9,7 +9,8 @@
   },
   "entrypoints": {
     "fabric-gametest": [
-      "dev.kizuna.meridian.piglinsword.PiglinSwordGameTest"
+      "dev.kizuna.meridian.piglinsword.PiglinSwordGameTest",
+      "dev.kizuna.meridian.piglinsword.PiglinSwordCoilGameTest"
     ]
   },
   "depends": {

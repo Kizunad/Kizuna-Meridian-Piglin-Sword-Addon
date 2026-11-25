@@ -91,7 +91,7 @@ def output_scroll(raw_dir: Path, resource_dir: Path, volume: str) -> None:
 def normalize_icon(image: Image.Image) -> Image.Image:
     """统一模型暗底和两圈边框，保留原稿动作主体。"""
     inner = image.crop((4, 4, ICON_LARGE - 4, ICON_LARGE - 4))
-    dark_colors = Counter(color for color in inner.get_flattened_data() if max(color) <= BACKGROUND_MAX_CHANNEL)
+    dark_colors = Counter(color for color in inner.getdata() if max(color) <= BACKGROUND_MAX_CHANNEL)
     if not dark_colors:
         raise ValueError("式图标缺少暗色底")
     background = dark_colors.most_common(1)[0][0]
@@ -127,9 +127,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("raw_dir", type=Path)
     parser.add_argument("--volume", choices=("upper", "lower"), default="upper")
+    parser.add_argument("--effect", choices=("coiled", "coiling"), action="append")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     resource_dir = root / "fabric/src/main/resources/assets/meridian_piglin_sword/textures"
+    if args.effect:
+        for name in args.effect:
+            output_icon(args.raw_dir, resource_dir / "mob_effect", name)
+        return
     output_background(args.raw_dir, resource_dir, args.volume)
     output_scroll(args.raw_dir, resource_dir, args.volume)
     if args.volume == "lower":

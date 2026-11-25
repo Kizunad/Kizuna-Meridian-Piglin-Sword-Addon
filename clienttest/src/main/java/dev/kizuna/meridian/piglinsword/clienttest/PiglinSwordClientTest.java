@@ -1,7 +1,11 @@
 package dev.kizuna.meridian.piglinsword.clienttest;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.kizuna.inventoryui.client.status.StatusIcons;
+import dev.kizuna.inventoryui.client.status.StatusLayout;
+import dev.kizuna.inventoryui.status.StatusArrangement.Single;
 import dev.kizuna.meridian.technique.fabric.TechniqueFabric;
+import dev.kizuna.meridian.technique.fabric.world.TechniqueStatusBenefits;
 import dev.kizuna.meridian.technique.protocol.pb.TechniqueMessages.BlockedAttackSource;
 import dev.kizuna.meridian.technique.protocol.pb.TechniqueMessages.CastOutcome;
 import dev.kizuna.meridian.technique.protocol.pb.TechniqueMessages.CastRequest;
@@ -30,8 +34,10 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
-import dev.kizuna.meridian.technique.fabric.world.TechniqueStatusBenefits;
 import net.minecraft.client.Screenshot;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.client.tutorial.TutorialSteps;
@@ -54,6 +60,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.Vec2;
 import net.fabricmc.loader.api.FabricLoader;
 
 /** P0 客户端证据，截图功法谱、卷轴和两种持剑施放反馈。 */
@@ -100,6 +107,10 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         context.getInput().resizeWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
+            if ("p4".equals(CLIENT_TEST_CLIP)) {
+                runCoil(context, world);
+                return;
+            }
             if ("p3".equals(CLIENT_TEST_CLIP)) {
                 runP3(context, world);
                 return;
@@ -118,6 +129,143 @@ public final class PiglinSwordClientTest implements FabricClientGameTest {
     }
 
     private static final int FLOW_START_FRAMES = 26;
+    private static final int COIL_WARMUP_FRAMES = 12;
+    private static final int COIL_HOLD_FRAMES = 48;
+    private static final int COIL_PULL_FRAMES = 10;
+    private static final float COIL_SIDE_YAW = -48.0F;
+    private static final float COIL_CAMERA_PITCH = 14.0F;
+    private static final double COIL_REACH = 3;
+    private static final String COIL_ATTACH_SOUND = "minecraft:item.armor.equip_chain";
+    private static final String COIL_PULL_SOUND = "minecraft:entity.player.attack.sweep";
+
+    private static void runCoil(ClientGameTestContext context, TestSingleplayerContext world) {
+        // 固定侧机位记录实际建缠、后退受限和抽回；状态说明另在背包悬停。
+        UUID playerId = prepare(context, world);
+        world.getServer().runCommand("meridian body realm @a true_qi");
+        fillGas(world);
+        world.getServer().runCommand("meridian technique learn @a " + PREFIX + "lower");
+        var arena = prepareP2Arena(context, world, playerId, BlockedAttackSource.GUARD);
+        frameDuel(context, world, arena, playerId);
+        var soundRows = new ArrayList<String>();
+        SoundEventListener listener = (sound, event, range) -> recordCoilSound(sound, soundRows);
+        context.runOnClient(client -> {
+            client.getSoundManager().addListener(listener);
+            client.options.showSubtitles().set(true /* showSubtitles */);
+        });
+        var subjects = new P2Arena(arena.defenderId(), arena.defenderId(), arena.cameraEntityId(), arena.wall());
+        var capture = new P2FrameCapture(context, world, subjects, "coil-pull", new ArrayList<>());
+        float before = defenderHealth(world, arena);
+        cast(world, playerId, "coil");
+        showP2Prompt(context, "缠");
+        captureP2Frames(capture, "缠", COIL_WARMUP_FRAMES);
+        world.getServer().runOnServer(server -> {
+            var target = (LivingEntity) server.overworld().getEntity(arena.defenderId());
+            var caster = server.getPlayerList().getPlayer(playerId);
+            if (!target.hasEffect(TechniqueStatusBenefits.get(PREFIX + "coiled").effect())
+                    || !caster.hasEffect(TechniqueStatusBenefits.get(PREFIX + "coiling").effect())) {
+                throw new AssertionError("录像双方没有建立牵制");
+            }
+            target.move(net.minecraft.world.entity.MoverType.SELF, new Vec3(P2_TARGET_X, 0, 0));
+            if (target.distanceTo(caster) > COIL_REACH) {
+                throw new AssertionError("持缠时目标越出三格");
+            }
+        });
+        context.runOnClient(client -> client.player.setYRot(COIL_SIDE_YAW));
+        showP2Prompt(context, "持缠");
+        captureP2Frames(capture, "持缠", COIL_HOLD_FRAMES);
+        showP2Prompt(context, "抽回");
+        captureP2Frames(capture, "抽回", COIL_PULL_FRAMES);
+        verifyPull(world, arena, playerId, before);
+        context.runOnClient(client -> client.getSoundManager().removeListener(listener));
+        if (soundRows.size() != 2) {
+            throw new AssertionError("盘入与抽回应各响一次，实录 " + soundRows);
+        }
+        writeP2Record("coil-sound.tsv", String.join("\n", soundRows));
+        writeP2Record("coil-pull.tsv", String.join("\n", capture.rows()));
+        captureBindNote(context, world, playerId, "coiled");
+        captureBindNote(context, world, playerId, "coiling");
+    }
+
+    private static void frameDuel(ClientGameTestContext context, TestSingleplayerContext world,
+                                  P2Arena arena, UUID playerId) {
+        // 让本地玩家担任第三人称镜头主体，缠住后转身观察持剑手与卫道士。
+        world.getServer().runOnServer(server -> {
+            var level = server.overworld();
+            var player = server.getPlayerList().getPlayer(playerId);
+            player.connection.teleport(P2_PLAYER_X, player.getY(), P2_PLAYER_Z, P2_PLAYER_YAW, COIL_CAMERA_PITCH);
+            var target = (LivingEntity) level.getEntity(arena.defenderId());
+            target.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_SWORD));
+            level.getEntity(arena.targetId()).discard();
+        });
+        context.waitTicks(SETTLE_TICKS);
+        context.runOnClient(client -> {
+            client.setCameraEntity(client.player);
+            client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            client.player.setXRot(COIL_CAMERA_PITCH);
+        });
+        context.waitTicks(SETTLE_TICKS);
+    }
+
+    private static void recordCoilSound(SoundInstance sound, List<String> rows) {
+        // 导出游戏本次实际选中的音频样本和音调，逐刻帧可按声音的客户端时刻配回。
+        String id = sound.getIdentifier().toString();
+        if (!id.equals(COIL_ATTACH_SOUND) && !id.equals(COIL_PULL_SOUND)) {
+            return;
+        }
+        var client = Minecraft.getInstance();
+        String file = id.equals(COIL_ATTACH_SOUND) ? "coil-attach.ogg" : "coil-pull.ogg";
+        var path = sound.getSound().getPath();
+        try (var sample = client.getResourceManager().open(path)) {
+            Files.copy(sample, FabricLoader.getInstance().getGameDir().resolve(file));
+        } catch (IOException error) {
+            throw new UncheckedIOException(error);
+        }
+        rows.add(client.level.getGameTime() + "\t" + id + "\t" + path + "\t" + file + "\t"
+                + sound.getVolume() + "\t" + sound.getPitch());
+    }
+
+    private static void verifyPull(TestSingleplayerContext world, P2Arena arena, UUID playerId, float before) {
+        // 录像末帧既要看到目标挨打，也要确认两个原版图标都已结束。
+        world.getServer().runOnServer(server -> {
+            var caster = server.getPlayerList().getPlayer(playerId);
+            var target = (LivingEntity) server.overworld().getEntity(arena.defenderId());
+            if (target.getHealth() >= before
+                    || target.hasEffect(TechniqueStatusBenefits.get(PREFIX + "coiled").effect())
+                    || caster.hasEffect(TechniqueStatusBenefits.get(PREFIX + "coiling").effect())) {
+                throw new AssertionError("抽回未命中或双端状态残留");
+            }
+        });
+    }
+
+    private static void captureBindNote(ClientGameTestContext context, TestSingleplayerContext world,
+                                        UUID playerId, String name) {
+        // 单人客户端轮流展示两端的背包说明，倒计时取自目录中的持续时间。
+        String id = PREFIX + name;
+        var registered = TechniqueStatusBenefits.get(id);
+        world.getServer().runOnServer(server -> TechniqueStatusBenefits.apply(
+                server.getPlayerList().getPlayer(playerId), registered.benefit()));
+        var effect = registered.effect();
+        context.waitFor(client -> client.player.hasEffect(effect));
+        context.runOnClient(client -> client.gui.setScreen(new InventoryScreen(client.player)));
+        context.waitTicks(SETTLE_TICKS);
+        var cursor = context.computeOnClient(client -> {
+            var layout = StatusIcons.lastLayout();
+            var slots = layout.slots();
+            int index = IntStream.range(0, slots.size())
+                    .filter(i -> slots.get(i) instanceof Single single && single.effect().id().equals(id))
+                    .findFirst().orElseThrow();
+            var cell = layout.cells().get(index);
+            int half = StatusLayout.FRAME_PIXELS / 2;
+            float scale = (float) client.getWindow().getGuiScale();
+            return new Vec2((cell.left() + half) * scale, (cell.top() + half) * scale);
+        });
+        context.getInput().setCursorPos(cursor.x, cursor.y);
+        context.waitTicks(SETTLE_TICKS);
+        context.takeScreenshot(TestScreenshotOptions.of("status-" + name + "-note").disableCounterPrefix());
+        context.runOnClient(client -> client.gui.setScreen(null));
+        world.getServer().runCommand("effect clear @a " + id);
+    }
+
     private static final int QUIVER_FRAMES = 22;
     private static final int FLOW_COOLDOWN_TICKS = 800;
 

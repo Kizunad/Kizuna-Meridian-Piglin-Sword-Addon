@@ -14,7 +14,7 @@ def check_lower_resources(assets: Path) -> None:
     keys.update(("volume.meridian_piglin_sword.lower.note", "codex.power.meridian_piglin_sword.lower"))
     for directory, section, suffix, names in (
             ("gui/technique", "technique", "note", ("coil", "molten_flow")),
-            ("mob_effect", "effect", "note", ("molten", "quenched"))):
+            ("mob_effect", "effect", "note", ("molten", "quenched", "coiled", "coiling"))):
         for name in names:
             sizes[f"{directory}/{name}"] = (32, 32)
             sizes[f"{directory}/{name}_64"] = (64, 64)
